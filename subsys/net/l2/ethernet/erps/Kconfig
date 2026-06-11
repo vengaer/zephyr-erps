@@ -1,0 +1,15 @@
+# Copyright (c) 2026 Vilhelm Engström
+#
+# SPDX-License-Identifier: Apache-2.0
+
+menu "Ethernet Ring Protection Switching"
+
+config ERPS
+	bool "Enable Ethernet ring protection switching"
+	default n
+	help
+	  Ethernet ring protection switching provides recovery switching
+	  for Ethernet rings while ensuring there are no loops in the
+	  network. Select y to enable this feature.
+
+endmenu

@@ -2,4 +2,4 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-rsource "subsys/Kconfig"
+add_subdirectory(l2)

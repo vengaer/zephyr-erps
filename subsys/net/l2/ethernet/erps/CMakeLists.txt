@@ -2,4 +2,5 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-rsource "subsys/Kconfig"
+zephyr_library()
+zephyr_library_sources(raps.c)
