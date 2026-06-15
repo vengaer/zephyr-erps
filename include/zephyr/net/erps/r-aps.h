@@ -10,8 +10,8 @@
  * @brief R-APS protocol header
  */
 
-#ifndef ZEPHYR_INCLUDE_NET_ERPS_RAPS_H_
-#define ZEPHYR_INCLUDE_NET_ERPS_RAPS_H_
+#ifndef ZEPHYR_INCLUDE_NET_ERPS_R_APS_H_
+#define ZEPHYR_INCLUDE_NET_ERPS_R_APS_H_
 
 #include <stdint.h>
 
@@ -29,13 +29,13 @@ extern "C" {
  * @{
  */
 
-/** RAPS fixed PDU constants as per ITU-T G.8032/Y.1344 */
+/** R-APS fixed PDU constants as per ITU-T G.8032/Y.1344 */
 enum {
 
-	/** RAPS version */
+	/** R-APS version */
 	RAPS_VERSION		= 1,
 
-	/** RAPS OAM PDU opcode */
+	/** R-APS OAM PDU opcode */
 	RAPS_OPCODE		= 0x28,
 
 	/** PDU flagsh */
@@ -162,4 +162,4 @@ enum {
 }
 #endif
 
-#endif /* ZEPHYR_INCLUDE_NET_ERPS_RAPS_H_ */
+#endif /* ZEPHYR_INCLUDE_NET_ERPS_R_APS_H_ */

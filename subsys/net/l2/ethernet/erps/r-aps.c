@@ -10,4 +10,4 @@
  * @brief R-APS protocol implementation
  */
 
-#include <zephyr/net/erps/raps.h>
+#include <zephyr/net/erps/r-aps.h>
