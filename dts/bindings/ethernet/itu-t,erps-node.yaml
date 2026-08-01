@@ -1,0 +1,252 @@
+# Copyright (c) 2026 Vilhelm Engström
+#
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  ERPS (ITU-T G.8032) node
+
+compatible: itu-t,erps-node
+
+properties:
+  itu-t,ring-protection-link:
+    type: phandle
+    description: |
+      Set to mark this node as a ring protection link. The property being set
+      marks the device as either the RPL owner or the RPL neighbor. Which of the
+      two is determined by the presence the itu-t,rpl-owner property.
+
+      Each Ethernet ring should have a single ring protection link.
+
+  itu-t,ring-links:
+    type: phandles
+    required: true
+    description: |
+      A phandles array referring to devices representing regular ring links. These
+      may be switch ports or MACs.
+
+  itu-t,rpl-owner:
+    type: boolean
+    description: |
+      Set for nodes managing the ring protection link. Requires that the
+      itu-t,ring-protection-link property is set.
+
+      Nodes marked with this property serve the roll of ETH_C_MI_RAPS_RPL_Owner_Node
+      described in the ERPS specification. If said property is not set but the
+      itu-t,ring-protection-lin property is set, the node takes on the role of what in
+      the specification is referred to as the ETH_C_MI_RAPS_RPL_Neighbour_Node.
+
+  itu-t,non-revertive:
+    type: boolean
+    description: |
+      By default, traffic is automatically reverted to the original path when a failed
+      link is restored. Setting this property causes traffic to be routed through the RPL
+      even after the link is restored. Note that setting this property DOES NOT cause the
+      restored link to be treated as an RPL.
+
+      Corresponds to the inverse of ETH_C_MI_RAPS_Revertive in the specification.
+
+  itu-t,raps-version:
+    type: int
+    default: 1
+    description: |
+      R-APS version. Use the macros in include/zephyr/dt-bindings/ethernet/erps.h.
+    enum:
+      - 0
+      - 1
+
+  itu-t,ring-id:
+    type: int
+    required: true
+    description: |
+      Numeric idenfier of the Ethernet ring to which this node belongs.
+    min: 1
+    max: 239
+
+  itu-t,vlan-identifier:
+    type: int
+    default: 4093
+    description: |
+      VLAN identifier used for the ring network
+
+  itu-t,net-pkt-alloc-timeout:
+    type: int
+    default: 50
+    description: |
+      Allocation timeout for outgoing net_pkt instances, in ms.
+
+  itu-t,raps-mel:
+    type: int
+    default: 7
+    description: |
+      The maintenance entity group level determines whether or not R-APS PDUs are
+      forwarded on networks with other fault detection protocols enabled. If the R-APS
+      MEL is lower than that of other fault detection protocols, the R-APS PDUs are
+      discarded.
+    enum:
+      - 0
+      - 1
+      - 2
+      - 3
+      - 4
+      - 5
+      - 6
+      - 7
+
+  itu-t,guard-timer-duration:
+    type: int
+    default: 500
+    description: |
+      Number of milliseconds before the guard timer expires.
+
+  itu-t,wtr-timer-duration:
+    type: int
+    default: 5
+    description: |
+      Wait-to-restore timer duration, in minutes.
+    enum:
+      - 1
+      - 2
+      - 3
+      - 4
+      - 5
+      - 6
+      - 7
+      - 8
+      - 9
+      - 10
+      - 11
+      - 12
+
+examples: |
+  - /* Ring node A, RPL owner */
+    / {
+
+      ethernet-ring0 {
+        compatible = "itu-t,erps-node";
+
+        /* Port 1 is RPL */
+        itu-t,ring-protection-link = <&sw1_port1>;
+
+        /* Port 2 is non-RPL */
+        itu-t,ring-links = <&sw1_port2>;
+
+        /* This node is managing the RPL */
+        itu-t,rpl-owner;
+
+        /* Use the same ID as in nodes B and C */
+        itu-t,ring-id = <1>;
+
+        status = "okay";
+      };
+    };
+
+    /* Ethernet switch */
+    &sw1 {
+      status = "okay";
+
+      /* Connected to sw1_port1 on ring node B */
+      sw1_port1: port@0 {
+        compatible = "zephyr,dsa-port;"
+        reg = <0>;
+
+        /* DSA stuff... */
+        status = "okay";
+      };
+
+      /* Connected to sw1_port2 on ring node C */
+      sw1_port2: port@1 {
+        compatible = "zephyr,dsa-port";
+        reg = <1>;
+
+        /* DSA stuff... */
+
+        status = "okay";
+    };
+  };
+
+  - /* Ring node B, RPL neighbor */
+    / {
+
+      ethernet-ring0 {
+        compatible = "itu-t,erps-node";
+
+        /* Port 1 is RPL */
+        itu-t,ring-protection-link = <&sw1_port1>;
+
+        /* Port 2 is non-RPL */
+        itu-t,ring-links = <&sw1_port2>;
+
+        /* This node is the RPL neighbor, leave the itu-t,rpl-owner property unset */
+
+        /* Use the same ID as in nodes A and C */
+        itu-t,ring-id = <1>;
+
+        status = "okay";
+      };
+    };
+
+    /* Ethernet switch */
+    &sw1 {
+      status = "okay";
+
+      /* Connected to sw1_port1 on node A */
+      sw1_port1: port@0 {
+        compatible = "zephyr,dsa-port;"
+        reg = <0>;
+
+        /* DSA stuff... */
+        status = "okay";
+      };
+
+      /* Connected to sw1_port1 on node C */
+      sw1_port2: port@1 {
+        compatible = "zephyr,dsa-port";
+        reg = <1>;
+
+        /* DSA stuff... */
+
+        status = "okay";
+    };
+  };
+
+  - /* Ring node C, simple node */
+    / {
+
+      ethernet-ring0 {
+        compatible = "itu-t,erps-node";
+
+        /* Node is not connected to the RPL, leave itu-t,ring-protection-link unset */
+
+        /* Both links are non-RPLs */
+        itu-t,ring-links = <&sw1_port1 &sw1_port2>;
+
+        /* Use the same ID as in nodes A and B */
+        itu-t,ring-id = <1>;
+
+        status = "okay";
+      };
+    };
+
+    /* Ethernet switch */
+    &sw1 {
+      status = "okay";
+
+      /* Connected to sw1_port2 on node B */
+      sw1_port1: port@0 {
+        compatible = "zephyr,dsa-port;"
+        reg = <0>;
+
+        /* DSA stuff... */
+        status = "okay";
+      };
+
+      /* Connected to sw1_port2 on node A */
+      sw1_port2: port@1 {
+        compatible = "zephyr,dsa-port";
+        reg = <1>;
+
+        /* DSA stuff... */
+
+        status = "okay";
+    };
+  };
