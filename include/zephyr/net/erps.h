@@ -12,6 +12,8 @@
 #ifndef ZEPHYR_INCLUDE_NET_ERPS_H_
 #define ZEPHYR_INCLUDE_NET_ERPS_H_
 
+#include <stdint.h>
+
 /**
  * @brief Ethernet ring protection switching
  * @defgroup erps Ethernet ring protection switching
@@ -49,6 +51,18 @@ enum erps_event {
  * @retval -errno  Error code indicating what went wrong
  */
 int net_erps_ctl(struct net_if *iface, enum erps_event ev);
+
+
+/**
+ * @brief Look up interface by ring ID and port index
+ *
+ * @param ring_id Ring identifier
+ * @param port    Port index
+ *
+ * @retval >0   Address of the interface corresponding to the ring port
+ * @retval NULL No ring matches @p ring_id, or @p port is invalid
+ */
+struct net_if *net_erps_lookup_iface(uint8_t ring_id, uint8_t port);
 
 /** @} */
 

@@ -1112,6 +1112,25 @@ static void erps_wtb_work(struct k_work *work)
 	}
 }
 
+#if defined(CONFIG_ERPS_SHELL)
+struct net_if *net_erps_lookup_iface(uint8_t ring_id, uint8_t port)
+{
+	if (port >= ARRAY_SIZE((((struct erps_node *)0)->ports))) {
+		return NULL;
+	}
+
+	STRUCT_SECTION_FOREACH(erps_node, node) {
+		if (node->ring_id != ring_id) {
+			continue;
+		}
+
+		return net_if_lookup_by_dev(node->ports[port].dev);
+	}
+
+	return NULL;
+}
+#endif /* CONFIG_ERPS_SHELL */
+
 static int erps_enable_vlan(struct erps_node *node)
 {
 	int ret;
