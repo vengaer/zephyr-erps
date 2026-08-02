@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 zephyr_library()
+zephyr_library_sources(erps-ctl.c)
 zephyr_library_sources(erps-fsm-common.c)
 zephyr_library_sources(erps-fsm-forced-switch.c)
 zephyr_library_sources(erps-fsm-idle.c)

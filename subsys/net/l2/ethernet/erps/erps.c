@@ -599,7 +599,7 @@ static int erps_fsm_resolve_req_prio(struct erps_node *node, enum raps_request r
 	return 0;
 }
 
-int erps_fsm_post(struct erps_link *lnk, enum raps_request req,
+static int erps_fsm_post(struct erps_link *lnk, enum raps_request req,
 		const struct raps_pdu *pdu)
 {
 	int ret;
@@ -638,6 +638,18 @@ int erps_fsm_post(struct erps_link *lnk, enum raps_request req,
 
 	k_mutex_unlock(&node->fsm_mutex);
 	return ret;
+}
+
+int net_erps_fsm_post(struct net_if *iface, enum raps_request req)
+{
+	struct erps_link *lnk;
+
+	lnk = erps_link_lookup_by_iface(iface);
+	if (!lnk) {
+		return -ENODEV;
+	}
+
+	return erps_fsm_post(lnk, req, NULL);
 }
 
 void erps_node_start_guard_timer(struct erps_node *node)

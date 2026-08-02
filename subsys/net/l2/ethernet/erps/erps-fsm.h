@@ -30,6 +30,17 @@ enum erps_node_state {
 	ERPS_STATE_PENDING,
 };
 
+/**
+ * @brief Post request to the FSM via interface
+ *
+ * @param iface Interface on which the event is to be posted
+ * @param req   Request to post
+ *
+ * @retval 0      Event successfully processed
+ * @retval -errno Error code indicating what went wrong
+ */
+int net_erps_fsm_post(struct net_if *iface, enum raps_request req);
+
 /*
  * Process request while in idle state
  *
