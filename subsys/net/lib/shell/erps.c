@@ -72,6 +72,11 @@ static int erps_sh_manual_switch(const struct shell *sh, size_t argc, char *argv
 	return erps_sh_ctl(ERPS_ADM_MANUAL_SWITCH, argc, argv);
 }
 
+static int erps_sh_forced_switch(const struct shell *sh, size_t argc, char *argv[])
+{
+	return erps_sh_ctl(ERPS_ADM_FORCED_SWITCH, argc, argv);
+}
+
 SHELL_STATIC_SUBCMD_SET_CREATE(
 	net_cmd_erps,
 
@@ -85,6 +90,12 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 		manual_switch, NULL,
 		SHELL_HELP("Engage manual switch on port", "<ring_id> <port_idx>"),
 		erps_sh_manual_switch
+	),
+
+	SHELL_CMD(
+		forced_switch, NULL,
+		SHELL_HELP("Engage forced switch on port", "<ring_id> <port_idx>"),
+		erps_sh_forced_switch
 	),
 
 	SHELL_SUBCMD_SET_END
