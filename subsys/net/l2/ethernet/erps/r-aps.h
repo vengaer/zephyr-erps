@@ -10,8 +10,8 @@
  * @brief R-APS protocol header
  */
 
-#ifndef ZEPHYR_INCLUDE_NET_ERPS_R_APS_H_
-#define ZEPHYR_INCLUDE_NET_ERPS_R_APS_H_
+#ifndef ZEPHYR_SUBSYS_NET_L2_ETHERNET_ERPS_R_APS_H_
+#define ZEPHYR_SUBSYS_NET_L2_ETHERNET_ERPS_R_APS_H_
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -361,4 +361,4 @@ inline uint_fast8_t raps_pdu_get_ring_id(const struct raps_pdu *pdu)
 }
 #endif
 
-#endif /* ZEPHYR_INCLUDE_NET_ERPS_R_APS_H_ */
+#endif /* ZEPHYR_SUBSYS_NET_L2_ETHERNET_ERPS_R_APS_H_ */

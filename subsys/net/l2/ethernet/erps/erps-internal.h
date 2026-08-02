@@ -10,7 +10,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include <zephyr/net/erps/r-aps.h>
+#include "r-aps.h"
 
 struct erps_link;
 struct erps_node;

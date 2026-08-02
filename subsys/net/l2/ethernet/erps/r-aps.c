@@ -10,7 +10,7 @@
  * @brief R-APS protocol implementation
  */
 
-#include <zephyr/net/erps/r-aps.h>
+#include "r-aps.h"
 
 bool raps_pdu_bpr(const struct raps_pdu *pdu);
 bool raps_pdu_dnf(const struct raps_pdu *pdu);

@@ -13,7 +13,6 @@
 #include <zephyr/device.h>
 #include <zephyr/devicetree.h>
 #include <zephyr/net/ethernet.h>
-#include <zephyr/net/erps/r-aps.h>
 #include <zephyr/net/net_log.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
@@ -23,6 +22,7 @@
 
 #include "erps-fsm.h"
 #include "erps-internal.h"
+#include "r-aps.h"
 
 /* compatible = "itu-t,erps-node"; */
 #define DT_DRV_COMPAT itu_t_erps_node

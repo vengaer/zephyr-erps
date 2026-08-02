@@ -7,7 +7,7 @@
 #ifndef ZEPHYR_SUBSYS_NET_L2_ETHERNET_ERPS_ERPS_FSM_H_
 #define ZEPHYR_SUBSYS_NET_L2_ETHERNET_ERPS_ERPS_FSM_H_
 
-#include <zephyr/net/erps/r-aps.h>
+#include "r-aps.h"
 
 struct erps_link;
 struct erps_node;
