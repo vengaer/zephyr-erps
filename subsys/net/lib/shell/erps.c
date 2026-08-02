@@ -33,8 +33,7 @@ static int erps_sh_parse_u8(const char *str)
 	return (uint8_t)ul;
 }
 
-
-static int erps_sh_clear(const struct shell *sh, size_t argc, char *argv[])
+static int erps_sh_ctl(enum erps_event ev, size_t argc, char *argv[])
 {
 	int ring_id, port;
 	struct net_if *iface;
@@ -59,7 +58,18 @@ static int erps_sh_clear(const struct shell *sh, size_t argc, char *argv[])
 		return -ENODEV;
 	}
 
-	return net_erps_ctl(iface, ERPS_ADM_CLEAR);
+	return net_erps_ctl(iface, ev);
+}
+
+
+static int erps_sh_clear(const struct shell *sh, size_t argc, char *argv[])
+{
+	return erps_sh_ctl(ERPS_ADM_CLEAR, argc, argv);
+}
+
+static int erps_sh_manual_switch(const struct shell *sh, size_t argc, char *argv[])
+{
+	return erps_sh_ctl(ERPS_ADM_MANUAL_SWITCH, argc, argv);
 }
 
 SHELL_STATIC_SUBCMD_SET_CREATE(
@@ -69,6 +79,12 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 		clear, NULL,
 		SHELL_HELP("Issue administrative clear", "<ring_id> <port_idx>"),
 		erps_sh_clear
+	),
+
+	SHELL_CMD(
+		manual_switch, NULL,
+		SHELL_HELP("Engage manual switch on port", "<ring_id> <port_idx>"),
+		erps_sh_manual_switch
 	),
 
 	SHELL_SUBCMD_SET_END
