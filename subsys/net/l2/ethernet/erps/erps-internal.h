@@ -99,13 +99,11 @@ int erps_node_sched_tx(struct erps_node *node, uint8_t req_state,
 void erps_node_stop_tx(struct erps_node *node);
 
 /*
- * Placeholder for FDB flush
+ * Flush forwarding database
+ *
+ * param lnk: Link on which the flush is to be performed
  */
-static inline int erps_flush_fdb(void)
-{
-	/* TODO: need upstream implementation */
-	return 0;
-}
+int erps_flush_fdb(struct erps_link *lnk);
 
 /*
  * Mark provided link as failed

@@ -236,6 +236,17 @@ static inline void erps_node_dst_mac(const struct erps_node *node,
 	mac->addr[sizeof(mac->addr) - 1u] = node->ring_id;
 }
 
+int erps_flush_fdb(struct erps_link *lnk)
+{
+	struct net_if *iface = net_if_lookup_by_dev(lnk->dev);
+
+	if (unlikely(!iface)) {
+		return -ENODEV;
+	}
+
+	return net_eth_fdb_mgmt(iface, FDB_MGMT_FLUSH);
+}
+
 int erps_link_get_node_id(struct erps_link *lnk, struct net_eth_addr *mac)
 {
 	struct net_if *iface;
@@ -730,7 +741,7 @@ static int erps_raps_node_id_bpr_flush(struct erps_link *lnk, enum raps_request 
 	if (bpr != oth_lnk->bpr || memcmp(oth_last_node_id, pdu_node_id, sizeof(*pdu_node_id))) {
 		/* Neither link has seen this (node ID, BPR) pair last, DNF is not set, the PDU does
 		 * not contain this node's ID and the request is not R-APS(NR). Flush */
-		ret = erps_flush_fdb();
+		ret = erps_flush_fdb(lnk);
 	}
 
 	return ret;
@@ -743,7 +754,7 @@ static inline bool erps_is_stray_raps_pdu(const struct erps_node *node, const st
 
 }
 
-static int erps_handle_raps_event(struct erps_node *node, const struct raps_pdu *pdu)
+static int erps_handle_raps_event(struct erps_link *lnk, const struct raps_pdu *pdu)
 {
 	uint_fast8_t subcode;
 
@@ -763,7 +774,7 @@ static int erps_handle_raps_event(struct erps_node *node, const struct raps_pdu 
 	 * distinct entities, expecting the ring to signal the flush logic for 10ms
 	 * here rather than simply carrying out the flush itself.
 	 */
-	return erps_flush_fdb();
+	return erps_flush_fdb(lnk);
 }
 
 static enum net_verdict erps_raps_recv(struct erps_link *lnk, struct net_if *iface,
@@ -815,7 +826,7 @@ static enum net_verdict erps_raps_recv(struct erps_link *lnk, struct net_if *ifa
 		req = RAPS_REQ_RAPS_FS;
 		break;
 	case RAPS_EVENT:
-		ret = erps_handle_raps_event(node, pdu);
+		ret = erps_handle_raps_event(lnk, pdu);
 		return ret ? NET_DROP : NET_OK;
 	default:
 		NET_ERR("Unsupported R-APS request/state 0x%02x",

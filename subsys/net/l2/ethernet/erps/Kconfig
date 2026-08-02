@@ -8,6 +8,7 @@ config ERPS
 	bool "Enable Ethernet ring protection switching"
 	default y
 	depends on DT_HAS_ITU_T_ERPS_NODE_ENABLED && NETWORKING
+	select NET_FDB_MGMT
 	select NET_VLAN
 	help
 	  Ethernet ring protection switching provides recovery switching

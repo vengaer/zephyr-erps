@@ -43,7 +43,7 @@ int erps_fsm_fs_sf_ms(struct erps_link *lnk, enum raps_req_state req_state,
 		ret = erps_link_unblock(oth_lnk);
 	}
 	if (!ret && !status) {
-		ret = erps_flush_fdb();
+		ret = erps_flush_fdb(lnk);
 	}
 	if (!ret) {
 		erps_fsm_transition(node, next_state);

@@ -33,7 +33,7 @@ static int erps_fsm_fs_fs(struct erps_link *lnk)
 		ret = erps_node_sched_tx(node, RAPS_FS, 0u, 0u);
 	}
 	if (!ret) {
-		ret = erps_flush_fdb();
+		ret = erps_flush_fdb(lnk);
 	}
 
 	if (ret) {

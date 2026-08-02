@@ -45,7 +45,7 @@ static int erps_fsm_clear_pending(struct erps_link *lnk)
 			ret = erps_link_unblock(non_rpl);
 		}
 		if (!ret && !(status & RAPS_DNF)) {
-			ret = erps_flush_fdb();
+			ret = erps_flush_fdb(lnk);
 		}
 	}
 
@@ -198,7 +198,7 @@ static int erps_fsm_timer_expires_pending(struct erps_link *lnk)
 		ret = erps_link_unblock(non_rpl);
 	}
 	if (!ret && !(status & RAPS_DNF)) {
-		ret = erps_flush_fdb();
+		ret = erps_flush_fdb(lnk);
 	}
 	if (!ret) {
 		erps_fsm_transition(node, ERPS_STATE_IDLE);
