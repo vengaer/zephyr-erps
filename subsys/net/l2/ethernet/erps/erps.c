@@ -457,11 +457,12 @@ bool erps_node_is_revertive(const struct erps_node *node)
 	return node->revertive;
 }
 
-static int erps_read_eth_hdr(struct net_pkt *pkt, union erps_eth_hdr *hdr)
+static int erps_read_eth_hdr(struct erps_link *lnk, struct net_pkt *pkt, union erps_eth_hdr *hdr)
 {
 	int ret;
 	size_t pkt_len;
-	uint16_t eth_type;
+	uint16_t eth_type, vid;
+	const struct erps_node *node = erps_link_get_node(lnk);
 
 	pkt_len = net_pkt_get_len(pkt);
 
@@ -491,6 +492,12 @@ static int erps_read_eth_hdr(struct net_pkt *pkt, union erps_eth_hdr *hdr)
 		if (ret) {
 			NET_ERR("Error reading VLAN tpid/tci: %d", -ret);
 			return ret;
+		}
+
+		vid = net_eth_vlan_get_vid(hdr->vlan.vlan.tci);
+		if (unlikely(node->vid != vid)) {
+			NET_DBG("Wrong VLAN 0x%x", (unsigned int)vid);
+			return -EINVAL;
 		}
 
 		eth_type = hdr->vlan.type;
@@ -859,7 +866,7 @@ static enum net_verdict erps_eth_recv(struct erps_link *lnk,
 
 	psize = net_pkt_remaining_data(pkt);
 
-	eth_type = erps_read_eth_hdr(pkt, &hdr);
+	eth_type = erps_read_eth_hdr(lnk, pkt, &hdr);
 	if (unlikely(eth_type < 0)) {
 		return NET_DROP;
 	}
