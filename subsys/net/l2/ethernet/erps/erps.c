@@ -743,12 +743,35 @@ static inline bool erps_is_stray_raps_pdu(const struct erps_node *node, const st
 
 }
 
+static int erps_handle_raps_event(struct erps_node *node, const struct raps_pdu *pdu)
+{
+	uint_fast8_t subcode;
+
+	subcode = raps_pdu_get_subcode(pdu);
+	if (subcode != RAPS_SC_FLUSH_REQ) {
+		NET_DBG("Invalid event subcode 0x%x",
+					(unsigned int)subcode);
+		return -EINVAL;
+	}
+	if (raps_pdu_status(pdu)) {
+		NET_DBG("Event with invalid status 0x%x",
+				(unsigned int)raps_pdu_status(pdu));
+		return -EINVAL;
+	}
+
+	/* Note: the specification seems to treat the ring and the flush logic as
+	 * distinct entities, expecting the ring to signal the flush logic for 10ms
+	 * here rather than simply carrying out the flush itself.
+	 */
+	return erps_flush_fdb();
+}
+
 static enum net_verdict erps_raps_recv(struct erps_link *lnk, struct net_if *iface,
 								const struct raps_pdu *pdu)
 {
 	int ret;
 	enum raps_request req;
-	uint_fast8_t req_state, subcode;
+	uint_fast8_t req_state;
 	struct erps_node *node = erps_link_get_node(lnk);
 
 	req_state = raps_pdu_get_req_state(pdu);
@@ -792,22 +815,8 @@ static enum net_verdict erps_raps_recv(struct erps_link *lnk, struct net_if *ifa
 		req = RAPS_REQ_RAPS_FS;
 		break;
 	case RAPS_EVENT:
-		subcode = raps_pdu_get_subcode(pdu);
-		if (subcode != RAPS_SC_FLUSH_REQ) {
-			NET_DBG("Invalid event subcode 0x%x",
-						(unsigned int)subcode);
-			return NET_DROP;
-		}
-		if (raps_pdu_status(pdu)) {
-			NET_DBG("Event with invalid status 0x%x",
-					(unsigned int)raps_pdu_status(pdu));
-			return NET_DROP;
-		}
-
-		/* TODO: handle flush event */
-		return NET_OK;
-
-		break;
+		ret = erps_handle_raps_event(node, pdu);
+		return ret ? NET_DROP : NET_OK;
 	default:
 		NET_ERR("Unsupported R-APS request/state 0x%02x",
 						(unsigned int)req_state);

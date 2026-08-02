@@ -131,7 +131,7 @@ enum raps_subcode {
 	 *
 	 * Valid only for @c RAPS_EV
 	 */
-	RAPS_SC_FLUSH_REQ
+	RAPS_SC_FLUSH_REQ	= 0,
 };
 
 
