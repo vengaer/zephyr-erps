@@ -23,6 +23,13 @@ config ERPS_INIT_PRIORITY
 	help
 	  ERPS link initialization priority.
 
+config ERPS_SHELL
+	bool "ERPS administration from the shell"
+	select NET_SHELL
+	select SHELL_HELP
+	help
+	  Set to gain access to the erps shell subcommands.
+
 module = ERPS
 module-str = erps
 source "subsys/logging/Kconfig.template.log_config"
