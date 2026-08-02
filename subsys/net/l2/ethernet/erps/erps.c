@@ -302,6 +302,7 @@ bool erps_node_any_link_blocked(const struct erps_node *node)
 
 int erps_link_block(struct erps_link *lnk)
 {
+	int ret;
 	struct net_if *iface;
 	struct erps_node *node;
 	struct erps_link *oth_lnk;
@@ -315,21 +316,27 @@ int erps_link_block(struct erps_link *lnk)
 		return -ENODEV;
 	}
 
-	net_if_flag_clear(iface, NET_IF_LOWER_UP);
-	lnk->blocked = true;
+	ret = net_if_down(iface);
+	if (ret == -EALREADY) {
+		ret = 0;
+	}
+	if (!ret) {
+		lnk->blocked = true;
 
-	node = erps_link_get_node(lnk);
-	oth_lnk = erps_node_other_link(node, lnk);
+		node = erps_link_get_node(lnk);
+		oth_lnk = erps_node_other_link(node, lnk);
 
-	/* Section 10.1.10 */
-	erps_link_delete_node_id_bpr(lnk);
-	erps_link_delete_node_id_bpr(oth_lnk);
+		/* Section 10.1.10 */
+		erps_link_delete_node_id_bpr(lnk);
+		erps_link_delete_node_id_bpr(oth_lnk);
+	}
 
-	return 0;
+	return ret;
 }
 
 int erps_link_unblock(struct erps_link *lnk)
 {
+	int ret;
 	struct net_if *iface;
 
 	if (!lnk->blocked) {
@@ -341,9 +348,14 @@ int erps_link_unblock(struct erps_link *lnk)
 		return -ENODEV;
 	}
 
-	net_if_flag_set(iface, NET_IF_LOWER_UP);
-	lnk->blocked = false;
-	return 0;
+	ret = net_if_up(iface);
+	if (ret == -EALREADY) {
+		ret = 0;
+	}
+	if (!ret) {
+		lnk->blocked = false;
+	}
+	return ret;
 }
 
 int erps_node_unblock_all(struct erps_node *node)
