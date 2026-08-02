@@ -341,6 +341,19 @@ inline uint_fast8_t raps_pdu_status(const struct raps_pdu *pdu)
 	return pdu->raps_info.status;
 }
 
+/**
+ * @brief Get R-APS ring id
+ *
+ * @param pdu The PDU whose ring ID is to be extracted
+ *
+ * @return Ring ID encoded in the PDU's node identifier
+ */
+inline uint_fast8_t raps_pdu_get_ring_id(const struct raps_pdu *pdu)
+{
+	const struct net_eth_addr *node_id = &pdu->raps_info.node_id;
+	return node_id->addr[sizeof(node_id) - 1u];
+}
+
 
 /** @} */
 

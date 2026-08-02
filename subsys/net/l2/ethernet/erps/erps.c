@@ -736,6 +736,13 @@ static int erps_raps_node_id_bpr_flush(struct erps_link *lnk, enum raps_request 
 	return ret;
 }
 
+static inline bool erps_is_stray_raps_pdu(const struct erps_node *node, const struct raps_pdu *pdu)
+{
+	/* Section 10.1.6, last paragraph */
+	return node->ring_id != raps_pdu_get_ring_id(pdu);
+
+}
+
 static enum net_verdict erps_raps_recv(struct erps_link *lnk, struct net_if *iface,
 								const struct raps_pdu *pdu)
 {
@@ -754,6 +761,10 @@ static enum net_verdict erps_raps_recv(struct erps_link *lnk, struct net_if *ifa
 	if (unlikely(pdu->cfm_hdr.opcode != RAPS_OPCODE)) {
 		NET_DBG("Discarding CFM frame, wrong opcode 0x%02x",
 			(unsigned int)pdu->cfm_hdr.opcode);
+		return NET_DROP;
+	}
+
+	if (unlikely(erps_is_stray_raps_pdu(node, pdu))) {
 		return NET_DROP;
 	}
 

@@ -23,6 +23,7 @@ enum raps_req_state raps_pdu_get_req_state(const struct raps_pdu *pdu);
 enum raps_subcode raps_pdu_get_subcode(const struct raps_pdu *pdu);
 
 uint_fast8_t raps_pdu_status(const struct raps_pdu *pdu);
+uint_fast8_t raps_pdu_get_ring_id(const struct raps_pdu *pdu);
 
 char const *raps_req_state_str(enum raps_req_state rs)
 {
