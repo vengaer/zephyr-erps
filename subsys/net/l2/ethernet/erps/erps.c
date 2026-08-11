@@ -244,7 +244,7 @@ int erps_flush_fdb(struct erps_link *lnk)
 		return -ENODEV;
 	}
 
-	return net_eth_fdb_mgmt(iface, FDB_MGMT_FLUSH);
+	return net_mgmt(NET_REQUEST_ETHERNET_FLUSH_FDB, iface, NULL, 0);
 }
 
 int erps_link_get_node_id(struct erps_link *lnk, struct net_eth_addr *mac)
