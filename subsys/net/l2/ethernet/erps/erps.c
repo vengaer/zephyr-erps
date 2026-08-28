@@ -426,6 +426,13 @@ int erps_node_sched_tx(struct erps_node *node, uint8_t req_state,
 		node->tx_burst = ERPS_RAPS_BURST;
 	}
 
+	NET_DBG("Scheduling R-APS(%s%s%s) TX%s, status 0x%02x",
+		raps_req_state_str(req_state),
+		status & RAPS_RB ? ",RB" : "",
+		status & RAPS_DNF ? ",DNF" : "",
+		node->tx_burst == ERPS_RAPS_BURST ? " (burst)" : "",
+		(unsigned int)status);
+
 	if (IS_ENABLED(CONFIG_MULTITHREADING)) {
 		/* Syncronize with TX work handler */
 		atomic_thread_fence(memory_order_release);
@@ -1059,7 +1066,16 @@ static void erps_tx_work(struct k_work *work)
 
 		ret = erps_link_send_pdu(lnk, vlan_iface);
 		if (ret) {
-			NET_ERR("Error sending R-APS PDU: %d", -ret);
+			NET_ERR("Error sending R-APS PDU: %d (iface %d)", -ret,
+					net_if_get_by_iface(vlan_iface));
+		}
+		else {
+			NET_DBG("R-APS(%s%s%s) - status 0x%02x - on interface %d",
+				raps_req_state_str(node->pdu_mut.rs_sc >> RAPS_RS_SHIFT),
+				node->pdu_mut.status & RAPS_RB ? ",RB" : "",
+				node->pdu_mut.status & RAPS_DNF ? ",DNF" : "",
+				(unsigned int)node->pdu_mut.status,
+				net_if_get_by_iface(vlan_iface));
 		}
 	}
 
