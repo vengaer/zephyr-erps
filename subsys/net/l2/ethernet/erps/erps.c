@@ -1362,6 +1362,8 @@ static int erps_node_init(struct erps_node *node)
 	k_work_init_delayable(&node->wtr_dwork, erps_wtr_work);
 	k_work_init_delayable(&node->wtb_dwork, erps_wtb_work);
 
+	node->lcmd = RAPS_REQ_INVALID;
+
 	ret = k_mutex_init(&node->fsm_mutex);
 	for (unsigned int i = 0u; !ret && i < ARRAY_SIZE(node->ports); ++i) {
 		ret = erps_link_pass_ctrl_frames(&node->ports[i]);
