@@ -316,10 +316,7 @@ int erps_link_block(struct erps_link *lnk)
 		return -ENODEV;
 	}
 
-	ret = net_if_down(iface);
-	if (ret == -EALREADY) {
-		ret = 0;
-	}
+	ret = net_eth_set_port_enabled(iface, false);
 	if (!ret) {
 		lnk->blocked = true;
 
@@ -348,10 +345,7 @@ int erps_link_unblock(struct erps_link *lnk)
 		return -ENODEV;
 	}
 
-	ret = net_if_up(iface);
-	if (ret == -EALREADY) {
-		ret = 0;
-	}
+	ret = net_eth_set_port_enabled(iface, true);
 	if (!ret) {
 		lnk->blocked = false;
 	}
