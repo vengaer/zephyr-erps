@@ -993,7 +993,6 @@ static int erps_link_send_pdu(struct erps_link *lnk, struct net_if *iface)
 	}
 
 	net_pkt_set_ll_proto_type(pkt, NET_ETH_PTYPE_OAM);
-	net_pkt_set_vlan_tag(pkt, node->vid);
 	ret = net_linkaddr_copy(net_pkt_lladdr_src(pkt),
 		net_if_get_link_addr(iface));
 	if (!ret) {
