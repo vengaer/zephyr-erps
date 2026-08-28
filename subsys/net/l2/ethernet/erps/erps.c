@@ -1204,6 +1204,7 @@ static int erps_fsm_init(struct erps_node *node)
 static int erps_link_init(struct erps_link *lnk)
 {
 	int ret;
+	struct net_eth_addr mac;
 	struct net_if *vlan_iface;
 	struct erps_node *node = erps_link_get_node(lnk);
 	struct net_if *iface = net_if_lookup_by_dev(lnk->dev);
@@ -1211,6 +1212,23 @@ static int erps_link_init(struct erps_link *lnk)
 	if (!iface) {
 		return -ENODEV;
 	}
+
+	erps_node_dst_mac(node, &mac);
+
+	ret = net_eth_mac_filter(iface, &mac, ETHERNET_FILTER_TYPE_DST_MAC_ADDRESS, true);
+	switch (ret) {
+	case 0:
+		break;
+	case -ENOTSUP:
+		NET_DBG("Interface %d does not support hardware filtering",
+			net_if_get_by_iface(iface));
+		break;
+	default:
+		NET_ERR("Iface %d: Error applying MAC filter: %d", net_if_get_by_iface(iface),
+				-ret);
+		break;
+	}
+
 
 	ret = net_eth_vlan_enable(iface, node->ctrl_vid);
 	if (ret) {
