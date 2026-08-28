@@ -630,17 +630,11 @@ static int erps_fsm_resolve_req_prio(struct erps_node *node, enum raps_request r
 	return 0;
 }
 
-static int erps_fsm_post(struct erps_link *lnk, enum raps_request req,
+static int erps_fsm_post_locked(struct erps_link *lnk, enum raps_request req,
 		const struct raps_pdu *pdu)
 {
 	int ret;
 	struct erps_node *node = erps_link_get_node(lnk);
-
-	ret = k_mutex_lock(&node->fsm_mutex, K_MSEC(250));
-	if (ret) {
-		NET_ERR("Could not ERPS FSM: %d", -ret);
-		return ret;
-	}
 
 	ret = erps_fsm_resolve_req_prio(node, req);
 	if (!ret) {
@@ -667,6 +661,22 @@ static int erps_fsm_post(struct erps_link *lnk, enum raps_request req,
 		}
 	}
 
+	return ret;
+}
+
+static inline int erps_fsm_post(struct erps_link *lnk, enum raps_request req,
+		const struct raps_pdu *pdu)
+{
+	int ret;
+	struct erps_node *node = erps_link_get_node(lnk);
+
+	ret = k_mutex_lock(&node->fsm_mutex, K_MSEC(250));
+	if (ret) {
+		NET_ERR("Could not lock ERPS FSM mutex: %d", -ret);
+		return ret;
+	}
+
+	ret = erps_fsm_post_locked(lnk, req, pdu);
 	k_mutex_unlock(&node->fsm_mutex);
 	return ret;
 }
@@ -709,10 +719,15 @@ static int erps_node_start_timer(struct erps_node *node,
 		node->wtb_expiry = sys_timepoint_calc(K_MSEC(erps_wtb_duration(node)));
 	}
 
-	/* Doesn't matter on which link the event is triggered */
-	ret = erps_fsm_post(&node->ports[0u], req, NULL);
+	/* WTR/WTB timers are managed entirely by the FSM. This means that the
+	 * fsm_mutex is already held whenever this function is called.
+	 *
+	 * The event can be issued on either link as WTR/WTB timer requests operate
+	 * on the entire node rather than individual links.
+	 */
+	ret = erps_fsm_post_locked(&node->ports[0u], req, NULL);
 	if (ret) {
-		NET_ERR("Error posting running signal: %d", -ret);
+		NET_ERR("Error posting running signal %d: %d", (int)req, -ret);
 
 		/* Don't care, the signal would have been ignored by the FSM either way */
 	}
@@ -1274,6 +1289,7 @@ static int erps_link_pass_ctrl_frames(struct erps_link *lnk)
 			ret = 0;
 			break;
 		default:
+			NET_ERR("Control frame management failure: %d", -ret);
 			return ret;
 		}
 
