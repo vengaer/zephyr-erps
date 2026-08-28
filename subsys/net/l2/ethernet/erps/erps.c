@@ -946,40 +946,44 @@ static enum net_verdict erps_recv(struct net_if *iface, uint16_t ptype,
 	return vdct;
 }
 
-static inline int erps_link_put_cfm_hdr(struct erps_link *lnk,
-						struct net_pkt *pkt)
-{
-	struct erps_node *node = erps_link_get_node(lnk);
-	struct raps_cfm_pdu_hdr cfm_hdr = {
-		.mel_ver = (node->raps_mel << RAPS_MEL_SHIFT) | node->raps_ver,
-		.opcode = RAPS_OPCODE,
-		.flags = RAPS_FLAGS,
-		.tlv_off = sizeof(struct raps_spc_info),
-	};
-
-	return net_pkt_write(pkt, &cfm_hdr, sizeof(cfm_hdr));
-}
-
-static int erps_link_put_raps_spc_info(struct erps_link *lnk,
-			struct net_if *iface, struct net_pkt *pkt)
+static int erps_raps_create(struct erps_link *lnk, struct net_pkt *pkt)
 {
 	int ret;
-	struct net_eth_addr mac;
+	struct raps_pdu *pdu;
 	struct erps_node *node = erps_link_get_node(lnk);
+	NET_PKT_DATA_ACCESS_DEFINE(raps_access, struct raps_pdu);
 
-	ret = erps_link_get_node_id(lnk, &mac);
-	if (!ret) {
-		ret = net_pkt_write_u8(pkt, node->pdu_mut.rs_sc);
+	pdu = net_pkt_get_data(pkt, &raps_access);
+	if (!pdu) {
+		return -ENOBUFS;
 	}
-	if (!ret) {
-		ret = net_pkt_write_u8(pkt, node->pdu_mut.status | (lnk->bpr << RAPS_BPR_SHIFT));
+
+	pdu->cfm_hdr.mel_ver = node->raps_mel << RAPS_MEL_SHIFT;
+	pdu->cfm_hdr.mel_ver |= node->raps_ver;
+	pdu->cfm_hdr.opcode = RAPS_OPCODE;
+	pdu->cfm_hdr.flags = RAPS_FLAGS,
+	pdu->cfm_hdr.tlv_off = sizeof(pdu->raps_info);
+
+	pdu->raps_info.rs_sc = node->pdu_mut.rs_sc;
+	pdu->raps_info.status = node->pdu_mut.status;
+
+	ret = erps_link_get_node_id(lnk, &pdu->raps_info.node_id);
+	if (ret) {
+		return ret;
 	}
-	if (!ret) {
-		ret = net_pkt_write(pkt, mac.addr, sizeof(mac.addr));
+	memset(pdu->raps_info.rfu, 0, sizeof(pdu->raps_info.rfu));
+
+	ret = net_pkt_set_data(pkt, &raps_access);
+	if (ret) {
+		return -ENOBUFS;
 	}
-	if (!ret) {
-		ret = net_pkt_memset(pkt, 0,
-				sizeof(((struct raps_spc_info *)0)->rfu));
+
+	if (IS_ENABLED(CONFIG_ERPS_PAD_RAPS_PDUS)) {
+		struct net_eth_vlan_hdr *hdr;
+		uint8_t pad[NET_ETH_MINIMAL_FRAME_SIZE - sizeof(*hdr) - sizeof(*pdu)] = { 0 };
+
+		NET_DBG("Padding R-APS PDU with %zu bytes", sizeof(pad));
+		ret = net_pkt_write(pkt, pad, sizeof(pad));
 	}
 
 	return ret;
@@ -989,37 +993,47 @@ static int erps_link_send_pdu(struct erps_link *lnk, struct net_if *iface)
 {
 	int ret;
 	struct net_iface;
+	size_t frame_size;
 	struct net_pkt *pkt;
 	enum net_verdict vdct;
 	struct net_eth_addr mac;
 	struct erps_node *node = erps_link_get_node(lnk);
 
-	pkt = net_pkt_alloc_with_buffer(iface, sizeof(struct raps_pdu),
-		NET_AF_UNSPEC, 0, K_MSEC(node->net_pkt_alloc_timeout));
+	frame_size = sizeof(struct raps_pdu);
+
+	if (IS_ENABLED(CONFIG_ERPS_PAD_RAPS_PDUS)) {
+		BUILD_ASSERT(sizeof(struct raps_pdu) < NET_ETH_MINIMAL_FRAME_SIZE);
+		frame_size = NET_ETH_MINIMAL_FRAME_SIZE;
+	}
+
+	pkt = net_pkt_alloc_with_buffer(iface, frame_size, NET_AF_UNSPEC, 0,
+			K_MSEC(node->net_pkt_alloc_timeout));
 	if (!pkt) {
 		return -ENOMEM;
 	}
 
 	net_pkt_set_ll_proto_type(pkt, NET_ETH_PTYPE_OAM);
-	ret = net_linkaddr_copy(net_pkt_lladdr_src(pkt),
-		net_if_get_link_addr(iface));
-	if (!ret) {
-		erps_node_dst_mac(node, &mac);
-		ret = net_linkaddr_set(net_pkt_lladdr_dst(pkt), mac.addr,
-								sizeof(mac));
+	ret = net_linkaddr_copy(net_pkt_lladdr_src(pkt), net_if_get_link_addr(iface));
+	if (ret) {
+		return ret;
 	}
-	if (!ret) {
-		ret = erps_link_put_cfm_hdr(lnk, pkt);
+
+	erps_node_dst_mac(node, &mac);
+	ret = net_linkaddr_set(net_pkt_lladdr_dst(pkt), mac.addr, sizeof(mac));
+	if (ret) {
+		return ret;
 	}
-	if (!ret) {
-		ret = erps_link_put_raps_spc_info(lnk, iface, pkt);
+
+	ret = erps_raps_create(lnk, pkt);
+	if (ret) {
+		return ret;
 	}
-	if (!ret) {
-		vdct = net_if_try_send_data(iface, pkt, K_NO_WAIT);
-		if (vdct == NET_DROP) {
-			ret = -EIO;
-		}
+
+	vdct = net_if_try_send_data(iface, pkt, K_NO_WAIT);
+	if (vdct == NET_DROP) {
+		ret = -EIO;
 	}
+
 	if (ret) {
 		net_pkt_unref(pkt);
 	}

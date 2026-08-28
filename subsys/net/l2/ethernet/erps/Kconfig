@@ -30,6 +30,20 @@ config ERPS_SHELL
 	help
 	  Set to gain access to the erps shell subcommands.
 
+config ERPS_PAD_RAPS_PDUS
+	bool "Pad R-APS PDUs"
+	default y
+	help
+	  Standard R-APS frames are 55 octets, i.e. smaller than the minimum size 64 byte Ethernet
+	  frame. Such small frames - so called runt frames - are automatically dropped by network
+	  devices.
+
+	  Enabling this option causes the ERPS implementation to automatically pad each PDU to 60
+	  bytes, avoiding it being dropped by network devices once the 4 byte CRC has been appended.
+
+	  Say n only if your MAC is configured to to pad runt frames.
+
+
 module = ERPS
 module-str = erps
 source "subsys/logging/Kconfig.template.log_config"
