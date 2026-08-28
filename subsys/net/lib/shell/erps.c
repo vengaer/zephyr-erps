@@ -10,10 +10,10 @@
 
 #include <zephyr/logging/log.h>
 #include <zephyr/net/erps.h>
+#include <zephyr/net/net_if.h>
 #include <zephyr/shell/shell.h>
 
-LOG_MODULE_DECLARE(erps_sh);
-
+LOG_MODULE_REGISTER(erps_sh, CONFIG_ERPS_LOG_LEVEL);
 
 static int erps_sh_parse_u8(const char *str)
 {
@@ -55,8 +55,11 @@ static int erps_sh_ctl(enum erps_event ev, size_t argc, char *argv[])
 
 	iface = net_erps_lookup_iface((uint8_t)ring_id, (uint8_t)port);
 	if (!iface) {
+		LOG_ERR("No interface for ring %d, port %d", ring_id, port);
 		return -ENODEV;
 	}
+
+	LOG_INF("ERPS event 0x%x on interface %d", (unsigned int)ev, net_if_get_by_iface(iface));
 
 	return net_erps_ctl(iface, ev);
 }
