@@ -305,9 +305,9 @@ bool erps_node_any_link_blocked(const struct erps_node *node)
 int erps_link_block(struct erps_link *lnk)
 {
 	int ret;
-	struct net_if *iface;
 	struct erps_node *node;
 	struct erps_link *oth_lnk;
+	struct net_if *iface, *vlan_iface;
 
 	if (lnk->blocked) {
 		return 0;
@@ -318,25 +318,38 @@ int erps_link_block(struct erps_link *lnk)
 		return -ENODEV;
 	}
 
-	ret = net_eth_set_port_enabled(iface, false);
-	if (!ret) {
-		lnk->blocked = true;
+	NET_DBG("Blocking interface %d", net_if_get_by_iface(iface));
 
-		node = erps_link_get_node(lnk);
-		oth_lnk = erps_node_other_link(node, lnk);
+	ret = net_eth_port_set_enabled(iface, false);
+	if (ret) {
+		return ret;
+	}
+	lnk->blocked = true;
 
-		/* Section 10.1.10 */
-		erps_link_delete_node_id_bpr(lnk);
-		erps_link_delete_node_id_bpr(oth_lnk);
+	node = erps_link_get_node(lnk);
+	oth_lnk = erps_node_other_link(node, lnk);
+
+	/* Section 10.1.10 */
+	erps_link_delete_node_id_bpr(lnk);
+	erps_link_delete_node_id_bpr(oth_lnk);
+
+	vlan_iface = net_eth_get_vlan_iface(iface, node->ctrl_vid);
+	if (!vlan_iface) {
+		NET_ERR("Could not get VLAN interface");
+		return -ENODEV;
 	}
 
-	return ret;
+	NET_DBG("Bringing VLAN interface %d down", net_if_get_by_iface(vlan_iface));
+	net_if_down(vlan_iface);
+
+	return 0;
 }
 
 int erps_link_unblock(struct erps_link *lnk)
 {
 	int ret;
-	struct net_if *iface;
+	struct erps_node *node;
+	struct net_if *iface, *vlan_iface;
 
 	if (!lnk->blocked) {
 		return 0;
@@ -347,11 +360,26 @@ int erps_link_unblock(struct erps_link *lnk)
 		return -ENODEV;
 	}
 
-	ret = net_eth_set_port_enabled(iface, true);
-	if (!ret) {
-		lnk->blocked = false;
+	NET_DBG("Unblocking interface %d", net_if_get_by_iface(iface));
+
+	ret = net_eth_port_set_enabled(iface, true);
+	if (ret) {
+		return ret;
 	}
-	return ret;
+	lnk->blocked = false;
+	node = erps_link_get_node(lnk);
+
+	vlan_iface = net_eth_get_vlan_iface(iface, node->ctrl_vid);
+
+	if (!vlan_iface) {
+		NET_ERR("Could not get VLAN interface");
+		return -ENODEV;
+	}
+
+	NET_DBG("Bringing VLAN interface %d up", net_if_get_by_iface(vlan_iface));
+	net_if_up(vlan_iface);
+
+	return 0;
 }
 
 int erps_node_unblock_all(struct erps_node *node)
