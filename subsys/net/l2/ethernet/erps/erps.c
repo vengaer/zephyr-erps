@@ -1263,6 +1263,10 @@ static int erps_node_init(struct erps_node *node)
 		ret = erps_fsm_init(node);
 	}
 
+	if (!ret) {
+		LOG_DBG("Ring %u node initialized", node->ring_id);
+	}
+
 	return ret;
 }
 
