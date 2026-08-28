@@ -12,6 +12,7 @@
 
 #include <zephyr/device.h>
 #include <zephyr/devicetree.h>
+#include <zephyr/net/dsa_core.h>
 #include <zephyr/net/ethernet.h>
 #include <zephyr/net/ethernet_vlan.h>
 #include <zephyr/net/net_log.h>
@@ -1215,7 +1216,54 @@ static int erps_fsm_init(struct erps_node *node)
 	return ret;
 }
 
-static int erps_link_init(struct erps_link *lnk)
+static int erps_link_pass_ctrl_frames(struct erps_link *lnk)
+{
+	int ret;
+	struct ethernet_context const *eth_ctx;
+	struct net_if *iface = net_if_lookup_by_dev(lnk->dev);
+
+	while (iface) {
+		NET_DBG("Control frame configuration for interface %d",
+			net_if_get_by_iface(iface));
+
+		if (net_if_l2(iface) != &NET_L2_GET_NAME(ETHERNET)) {
+			return -EINVAL;
+		}
+
+		eth_ctx = net_if_l2_data(iface);
+		if (!eth_ctx) {
+			return -ENODEV;
+		}
+
+		ret = net_eth_pass_ctrl_frames(iface, true);
+		switch (ret) {
+		case 0:
+			NET_DBG("Control frames pass interface %d", net_if_get_by_iface(iface));
+			break;
+		case -ENOTSUP:
+			NET_DBG("Interface %d does not support control frame management",
+				net_if_get_by_iface(iface));
+			ret = 0;
+			break;
+		default:
+			return ret;
+		}
+
+		switch (eth_ctx->dsa_port) {
+		case DSA_CONDUIT_PORT:
+		case NON_DSA_PORT:
+			return 0;
+		default:
+			break;
+		}
+
+		iface = dsa_get_conduit_iface(iface);
+	}
+
+	return -ENODEV;
+}
+
+static int erps_link_configure_vlan(struct erps_link *lnk)
 {
 	int ret;
 	struct net_eth_addr mac;
@@ -1229,7 +1277,8 @@ static int erps_link_init(struct erps_link *lnk)
 
 	erps_node_dst_mac(node, &mac);
 
-	ret = net_eth_mac_filter(iface, &mac, ETHERNET_FILTER_TYPE_DST_MAC_ADDRESS, true);
+	ret = net_eth_vlan_mac_filter(iface, &mac, ETHERNET_FILTER_TYPE_DST_MAC_ADDRESS, true,
+					node->ctrl_vid);
 	switch (ret) {
 	case 0:
 		break;
@@ -1271,7 +1320,9 @@ static int erps_node_init(struct erps_node *node)
 
 	ret = k_mutex_init(&node->fsm_mutex);
 	for (unsigned int i = 0u; !ret && i < ARRAY_SIZE(node->ports); ++i) {
-		ret = erps_link_init(&node->ports[i]);
+		ret = erps_link_pass_ctrl_frames(&node->ports[i]);
+		if (!ret)
+			ret = erps_link_configure_vlan(&node->ports[i]);
 	}
 	if (!ret) {
 		ret = erps_fsm_init(node);
