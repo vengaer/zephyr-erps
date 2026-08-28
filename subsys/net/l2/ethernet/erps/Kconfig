@@ -19,7 +19,7 @@ if ERPS
 
 config ERPS_INIT_PRIORITY
 	int "ERPS initialization priority"
-	default 61
+	default 91
 	help
 	  ERPS link initialization priority.
 
