@@ -90,13 +90,13 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 	),
 
 	SHELL_CMD(
-		manual_switch, NULL,
+		ms, NULL,
 		SHELL_HELP("Engage manual switch on port", "<ring_id> <port_idx>"),
 		erps_sh_manual_switch
 	),
 
 	SHELL_CMD(
-		forced_switch, NULL,
+		fs, NULL,
 		SHELL_HELP("Engage forced switch on port", "<ring_id> <port_idx>"),
 		erps_sh_forced_switch
 	),
