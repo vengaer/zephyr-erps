@@ -62,11 +62,11 @@ properties:
     min: 1
     max: 239
 
-  itu-t,vlan-identifier:
+  itu-t,control-vlan-identifier:
     type: int
     default: 4093
     description: |
-      VLAN identifier used for the ring network
+      Identifier used for the control VLAN
 
   itu-t,net-pkt-alloc-timeout:
     type: int

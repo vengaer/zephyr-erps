@@ -141,8 +141,8 @@ struct erps_node {
 	/* Duration of the guard timer, in ms */
 	const uint16_t guard_timer_duration;
 
-	/* VLAN identifier */
-	const uint16_t vid;
+	/* Control VLAN identifier */
+	const uint16_t ctrl_vid;
 
 	/* net_pkt allocation timeout */
 	const uint32_t net_pkt_alloc_timeout;
@@ -507,8 +507,8 @@ static int erps_read_eth_hdr(struct erps_link *lnk, struct net_pkt *pkt, union e
 		}
 
 		vid = net_eth_vlan_get_vid(hdr->vlan.vlan.tci);
-		if (unlikely(node->vid != vid)) {
-			NET_DBG("Wrong VLAN 0x%x", (unsigned int)vid);
+		if (unlikely(node->ctrl_vid != vid)) {
+			NET_DBG("Frame not in the control VLAN 0x%x", (unsigned int)vid);
 			return -EINVAL;
 		}
 
@@ -1303,7 +1303,7 @@ static int erps_node_init(struct erps_node *node)
 		.guard_timer_duration = DT_INST_PROP(                                          \
 			n, itu_t_guard_timer_duration                                          \
 		),                                                                             \
-		.vid = DT_INST_PROP(n, itu_t_vlan_identifier),                                 \
+		.ctrl_vid = DT_INST_PROP(n, itu_t_control_vlan_identifier),                    \
 		.net_pkt_alloc_timeout = DT_INST_PROP(                                         \
 			n, itu_t_net_pkt_alloc_timeout                                         \
 		),                                                                             \
