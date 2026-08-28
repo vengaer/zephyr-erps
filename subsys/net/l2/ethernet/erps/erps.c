@@ -1462,7 +1462,7 @@ static int erps_node_init(struct erps_node *node)
 
 #define ERPS_NODE_INIT(n)                                                                      \
 	BUILD_ASSERT(                                                                          \
-		!DT_INST_NODE_HAS_PROP(n, itu_t_rpl_owner) ||                                  \
+		!DT_INST_PROP(n, itu_t_rpl_owner) ||                                           \
 			DT_INST_NODE_HAS_PROP(n, itu_t_ring_protection_link),                  \
 		"itu-t,rpl-owner needs itu-t,ring-protection-link"                             \
 	);                                                                                     \
