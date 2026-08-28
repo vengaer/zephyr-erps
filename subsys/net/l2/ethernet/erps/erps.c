@@ -1084,7 +1084,6 @@ static int erps_raps_create(struct erps_link *lnk, struct net_pkt *pkt)
 static int erps_link_send_pdu(struct erps_link *lnk, struct net_if *iface)
 {
 	int ret;
-	struct net_iface;
 	size_t frame_size;
 	struct net_pkt *pkt;
 	enum net_verdict vdct;
