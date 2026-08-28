@@ -117,136 +117,139 @@ properties:
       - 11
       - 12
 
-examples: |
-  - /* Ring node A, RPL owner */
-    / {
+examples:
+  - |
+      /* Ring node A, RPL owner */
+      / {
 
-      ethernet-ring0 {
-        compatible = "itu-t,erps-node";
+        ethernet-ring0 {
+          compatible = "itu-t,erps-node";
 
-        /* Port 1 is RPL */
-        itu-t,ring-protection-link = <&sw1_port1>;
+          /* Port 1 is RPL */
+          itu-t,ring-protection-link = <&sw1_port1>;
 
-        /* Port 2 is non-RPL */
-        itu-t,ring-links = <&sw1_port2>;
+          /* Port 2 is non-RPL */
+          itu-t,ring-links = <&sw1_port2>;
 
-        /* This node is managing the RPL */
-        itu-t,rpl-owner;
+          /* This node is managing the RPL */
+          itu-t,rpl-owner;
 
-        /* Use the same ID as in nodes B and C */
-        itu-t,ring-id = <1>;
+          /* Use the same ID as in nodes B and C */
+          itu-t,ring-id = <1>;
 
-        status = "okay";
-      };
-    };
-
-    /* Ethernet switch */
-    &sw1 {
-      status = "okay";
-
-      /* Connected to sw1_port1 on ring node B */
-      sw1_port1: port@0 {
-        compatible = "zephyr,dsa-port;"
-        reg = <0>;
-
-        /* DSA stuff... */
-        status = "okay";
+          status = "okay";
+        };
       };
 
-      /* Connected to sw1_port2 on ring node C */
-      sw1_port2: port@1 {
-        compatible = "zephyr,dsa-port";
-        reg = <1>;
-
-        /* DSA stuff... */
-
+      /* Ethernet switch */
+      &sw1 {
         status = "okay";
-    };
-  };
 
-  - /* Ring node B, RPL neighbor */
-    / {
+        /* Connected to sw1_port1 on ring node B */
+        sw1_port1: port@0 {
+          compatible = "zephyr,dsa-port;"
+          reg = <0>;
 
-      ethernet-ring0 {
-        compatible = "itu-t,erps-node";
+          /* DSA stuff... */
+          status = "okay";
+        };
 
-        /* Port 1 is RPL */
-        itu-t,ring-protection-link = <&sw1_port1>;
+        /* Connected to sw1_port2 on ring node C */
+        sw1_port2: port@1 {
+          compatible = "zephyr,dsa-port";
+          reg = <1>;
 
-        /* Port 2 is non-RPL */
-        itu-t,ring-links = <&sw1_port2>;
+          /* DSA stuff... */
 
-        /* This node is the RPL neighbor, leave the itu-t,rpl-owner property unset */
-
-        /* Use the same ID as in nodes A and C */
-        itu-t,ring-id = <1>;
-
-        status = "okay";
-      };
-    };
-
-    /* Ethernet switch */
-    &sw1 {
-      status = "okay";
-
-      /* Connected to sw1_port1 on node A */
-      sw1_port1: port@0 {
-        compatible = "zephyr,dsa-port;"
-        reg = <0>;
-
-        /* DSA stuff... */
-        status = "okay";
+          status = "okay";
+        };
       };
 
-      /* Connected to sw1_port1 on node C */
-      sw1_port2: port@1 {
-        compatible = "zephyr,dsa-port";
-        reg = <1>;
+  - |
+      /* Ring node B, RPL neighbor */
+      / {
 
-        /* DSA stuff... */
+        ethernet-ring0 {
+          compatible = "itu-t,erps-node";
 
-        status = "okay";
-    };
-  };
+          /* Port 1 is RPL */
+          itu-t,ring-protection-link = <&sw1_port1>;
 
-  - /* Ring node C, simple node */
-    / {
+          /* Port 2 is non-RPL */
+          itu-t,ring-links = <&sw1_port2>;
 
-      ethernet-ring0 {
-        compatible = "itu-t,erps-node";
+          /* This node is the RPL neighbor, leave the itu-t,rpl-owner property unset */
 
-        /* Node is not connected to the RPL, leave itu-t,ring-protection-link unset */
+          /* Use the same ID as in nodes A and C */
+          itu-t,ring-id = <1>;
 
-        /* Both links are non-RPLs */
-        itu-t,ring-links = <&sw1_port1 &sw1_port2>;
-
-        /* Use the same ID as in nodes A and B */
-        itu-t,ring-id = <1>;
-
-        status = "okay";
-      };
-    };
-
-    /* Ethernet switch */
-    &sw1 {
-      status = "okay";
-
-      /* Connected to sw1_port2 on node B */
-      sw1_port1: port@0 {
-        compatible = "zephyr,dsa-port;"
-        reg = <0>;
-
-        /* DSA stuff... */
-        status = "okay";
+          status = "okay";
+        };
       };
 
-      /* Connected to sw1_port2 on node A */
-      sw1_port2: port@1 {
-        compatible = "zephyr,dsa-port";
-        reg = <1>;
-
-        /* DSA stuff... */
-
+      /* Ethernet switch */
+      &sw1 {
         status = "okay";
-    };
-  };
+
+        /* Connected to sw1_port1 on node A */
+        sw1_port1: port@0 {
+          compatible = "zephyr,dsa-port;"
+          reg = <0>;
+
+          /* DSA stuff... */
+          status = "okay";
+        };
+
+        /* Connected to sw1_port1 on node C */
+        sw1_port2: port@1 {
+          compatible = "zephyr,dsa-port";
+          reg = <1>;
+
+          /* DSA stuff... */
+
+          status = "okay";
+        };
+      };
+
+  - |
+      /* Ring node C, simple node */
+      / {
+
+        ethernet-ring0 {
+          compatible = "itu-t,erps-node";
+
+          /* Node is not connected to the RPL, leave itu-t,ring-protection-link unset */
+
+          /* Both links are non-RPLs */
+          itu-t,ring-links = <&sw1_port1 &sw1_port2>;
+
+          /* Use the same ID as in nodes A and B */
+          itu-t,ring-id = <1>;
+
+          status = "okay";
+        };
+      };
+
+      /* Ethernet switch */
+      &sw1 {
+        status = "okay";
+
+        /* Connected to sw1_port2 on node B */
+        sw1_port1: port@0 {
+          compatible = "zephyr,dsa-port;"
+          reg = <0>;
+
+          /* DSA stuff... */
+          status = "okay";
+        };
+
+        /* Connected to sw1_port2 on node A */
+        sw1_port2: port@1 {
+          compatible = "zephyr,dsa-port";
+          reg = <1>;
+
+          /* DSA stuff... */
+
+          status = "okay";
+        };
+      };
