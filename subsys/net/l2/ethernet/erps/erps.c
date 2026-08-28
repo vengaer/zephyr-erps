@@ -912,7 +912,9 @@ static enum net_verdict erps_eth_recv(struct erps_link *lnk,
 static enum net_verdict erps_recv(struct net_if *iface, uint16_t ptype,
 							struct net_pkt *pkt)
 {
+	enum net_verdict vdct;
 	struct erps_link *lnk;
+	struct net_pkt_cursor backup;
 
 	NET_DBG("Incoming R-APS PDU");
 
@@ -922,13 +924,18 @@ static enum net_verdict erps_recv(struct net_if *iface, uint16_t ptype,
 		return NET_DROP;
 	}
 
-	if (unlikely(net_pkt_get_len(pkt) < sizeof(struct raps_pdu))) {
+	net_pkt_cursor_backup(pkt, &backup);
+	if (likely(net_pkt_get_len(pkt) >= sizeof(struct raps_pdu))) {
+		vdct = erps_eth_recv(lnk, iface, pkt);
+	}
+	else {
 		NET_DBG("R-APS packet too small. Expected %zu, have %zu",
 			sizeof(struct raps_pdu), net_pkt_get_len(pkt));
-		return NET_DROP;
+		vdct = NET_DROP;
 	}
 
-	return erps_eth_recv(lnk, iface, pkt);
+	net_pkt_cursor_restore(pkt, &backup);
+	return vdct;
 }
 
 static inline int erps_link_put_cfm_hdr(struct erps_link *lnk,
