@@ -113,8 +113,8 @@ struct erps_node {
 	/* Whether or not to revert traffic to original path on restoration */
 	bool revertive;
 
-	/* Current local command */
-	uint8_t lcmd;
+	/* Local top priority request */
+	uint8_t local_topreq;
 
 	/* Whether or not this node is the RPL owner */
 	const bool rpl_owner;
@@ -190,6 +190,44 @@ static inline char const *erps_state_name(enum erps_node_state state)
 		return "FORCED_SWITCH";
 	case ERPS_STATE_PENDING:
 		return "PENDING";
+	default:
+		break;
+	}
+
+	return "<unknown>";
+}
+
+static inline char const *erps_request_name(enum erps_request req)
+{
+	switch (req) {
+	case ERPS_REQ_CLEAR:
+		return "CLEAR";
+	case ERPS_REQ_FS:
+		return "FS";
+	case ERPS_REQ_RAPS_FS:
+		return "R-APS(FS)";
+	case ERPS_REQ_SF:
+		return "SF";
+	case ERPS_REQ_CLEAR_SF:
+		return "Local clear SF";
+	case ERPS_REQ_RAPS_SF:
+		return "R-APS(SF)";
+	case ERPS_REQ_RAPS_MS:
+		return "R-APS(MS)";
+	case ERPS_REQ_MS:
+		return "MS";
+	case ERPS_REQ_WTR_EXPIRES:
+		return "WTR Expires";
+	case ERPS_REQ_WTR_RUNNING:
+		return "WTR Running";
+	case ERPS_REQ_WTB_EXPIRES:
+		return "WTB Expires";
+	case ERPS_REQ_WTB_RUNNING:
+		return "WTB Running";
+	case ERPS_REQ_RAPS_NR_RB:
+		return "R-APS(NR,RB)";
+	case ERPS_REQ_RAPS_NR:
+		return "R-APS(NR)";
 	default:
 		break;
 	}
@@ -580,10 +618,11 @@ void erps_fsm_transition(struct erps_node *node, enum erps_node_state next)
 	node->state = next;
 }
 
-/* Called with fsm_mutex held */
-static inline bool erps_fsm_clear_valid(const struct erps_node *node)
+/* Section 10.1.9 */
+static bool erps_local_clear_valid(struct erps_node *node, enum erps_request req)
 {
-	switch (node->lcmd) {
+	/* Always if local FS or MS in effect */
+	switch (node->local_topreq) {
 	case ERPS_REQ_FS:
 	case ERPS_REQ_MS:
 		return true;
@@ -591,42 +630,48 @@ static inline bool erps_fsm_clear_valid(const struct erps_node *node)
 		break;
 	}
 
-	return erps_node_is_rpl_owner(node) &&
-			node->lcmd != ERPS_REQ_RAPS_FS &&
-			node->lcmd != ERPS_REQ_RAPS_MS;
+	/* Never if R-APS(MS) or R-APS(FS) is top request. */
+	switch (MIN(req, node->local_topreq)) {
+	case ERPS_REQ_RAPS_FS:
+	case ERPS_REQ_RAPS_MS:
+		return false;
+	default:
+		break;
+	}
+
+	/* Allow if RPL owner */
+	return erps_node_is_rpl_owner(node);
 }
 
+/* Sections 10.1.1 and  10.1.9 */
 static int erps_fsm_resolve_req_prio(struct erps_node *node, enum erps_request req)
 {
-	if (req == ERPS_REQ_CLEAR && !erps_fsm_clear_valid(node)) {
-		/* Clear not allowed in this state */
-		return -EINVAL;
+	if (req == ERPS_REQ_CLEAR && !erps_local_clear_valid(node, req)) {
+		return -EBUSY;
 	}
 
-	if (req == ERPS_REQ_CLEAR_SF && node->lcmd == ERPS_REQ_SF) {
-		node->lcmd = ERPS_REQ_INVALID;
-	}
-
-	if (req < node->lcmd) {
+	/* Update local top priority request on higher priority request (10.1.9) */
+	if (req <= node->local_topreq) {
 		switch (req) {
-		case ERPS_REQ_CLEAR:
+		case ERPS_REQ_SF:
 		case ERPS_REQ_FS:
 		case ERPS_REQ_MS:
-			NET_DBG("Local command is 0x%x", (unsigned int)req);
-			node->lcmd = req;
+			/* Local request is top priority */
+			node->local_topreq = req;
 			break;
 		default:
-			node->lcmd = ERPS_REQ_INVALID;
+			/* If local command is overridden ... that command it forgotten (10.1.9) */
+			node->local_topreq = ERPS_REQ_INVALID;
 			break;
 		}
 	}
 	else {
-		NET_DBG("Disregarding request 0x%x, current 0x%x", (unsigned int)req, node->lcmd);
-		/* Request not high-enough priority, do not pass to FSM */
-		return -ENOMSG;
+		NET_DBG("Request '%s' is lower priority than local top request '%s'",
+			erps_request_name(req), erps_request_name(node->local_topreq));
+		return -EBUSY;
 	}
 
-	/* Top priority request */
+	/* req is top priority, pass it to FSM */
 	return 0;
 }
 
@@ -637,28 +682,31 @@ static int erps_fsm_post_locked(struct erps_link *lnk, enum erps_request req,
 	struct erps_node *node = erps_link_get_node(lnk);
 
 	ret = erps_fsm_resolve_req_prio(node, req);
-	if (!ret) {
-		switch (node->state) {
-		case ERPS_STATE_IDLE:		/* Table 10-2, rows 2-15 */
-			ret = erps_fsm_post_idle(lnk, req, pdu);
-			break;
-		case ERPS_STATE_PROTECTION:	/* Table 10-2, rows 16-29 */
-			ret = erps_fsm_post_protection(lnk, req);
-			break;
-		case ERPS_STATE_MANUAL_SWITCH:	/* Table 10-2, rows 30-43 */
-			ret = erps_fsm_post_manual_switch(lnk, req);
-			break;
-		case ERPS_STATE_FORCED_SWITCH:	/* Table 10-2, rows 44-57 */
-			ret = erps_fsm_post_forced_switch(lnk, req);
-			break;
-		case ERPS_STATE_PENDING:	/* Table 10-2, rows 58-73 */
-			ret = erps_fsm_post_pending(lnk, req, pdu);
-			break;
-		default:
-			NET_ERR("Invalid ERPS state 0x%02x",
-					(unsigned int)node->state);
-			break;
-		}
+	if (ret == -EBUSY) {
+		NET_DBG("Request '%s' ignored by priority logic", erps_request_name(req));
+		return 0;
+	}
+
+	switch (node->state) {
+	case ERPS_STATE_IDLE:		/* Table 10-2, rows 2-15 */
+		ret = erps_fsm_post_idle(lnk, req, pdu);
+		break;
+	case ERPS_STATE_PROTECTION:	/* Table 10-2, rows 16-29 */
+		ret = erps_fsm_post_protection(lnk, req);
+		break;
+	case ERPS_STATE_MANUAL_SWITCH:	/* Table 10-2, rows 30-43 */
+		ret = erps_fsm_post_manual_switch(lnk, req);
+		break;
+	case ERPS_STATE_FORCED_SWITCH:	/* Table 10-2, rows 44-57 */
+		ret = erps_fsm_post_forced_switch(lnk, req);
+		break;
+	case ERPS_STATE_PENDING:	/* Table 10-2, rows 58-73 */
+		ret = erps_fsm_post_pending(lnk, req, pdu);
+		break;
+	default:
+		NET_ERR("Invalid ERPS state 0x%02x",
+				(unsigned int)node->state);
+		break;
 	}
 
 	return ret;
@@ -1362,7 +1410,7 @@ static int erps_node_init(struct erps_node *node)
 	k_work_init_delayable(&node->wtr_dwork, erps_wtr_work);
 	k_work_init_delayable(&node->wtb_dwork, erps_wtb_work);
 
-	node->lcmd = ERPS_REQ_INVALID;
+	node->local_topreq = ERPS_REQ_INVALID;
 
 	ret = k_mutex_init(&node->fsm_mutex);
 	for (unsigned int i = 0u; !ret && i < ARRAY_SIZE(node->ports); ++i) {
