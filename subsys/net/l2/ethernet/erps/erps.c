@@ -13,6 +13,7 @@
 #include <zephyr/device.h>
 #include <zephyr/devicetree.h>
 #include <zephyr/net/ethernet.h>
+#include <zephyr/net/ethernet_vlan.h>
 #include <zephyr/net/net_log.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
@@ -1131,29 +1132,6 @@ struct net_if *net_erps_lookup_iface(uint8_t ring_id, uint8_t port)
 }
 #endif /* CONFIG_ERPS_SHELL */
 
-static int erps_enable_vlan(struct erps_node *node)
-{
-	int ret;
-	struct net_if *iface;
-	struct erps_link *lnk;
-
-	ret = 0;
-	for (unsigned int i = 0u; !ret && i < ARRAY_SIZE(node->ports); ++i) {
-		lnk = &node->ports[i];
-
-		iface = net_if_lookup_by_dev(lnk->dev);
-		if (unlikely(!iface)) {
-			ret = -ENODEV;
-		}
-
-		if (!ret) {
-			ret = net_eth_vlan_enable(iface, node->vid);
-		}
-	}
-
-	return ret;
-}
-
 static int erps_fsm_init(struct erps_node *node)
 {
 	int ret;
@@ -1195,6 +1173,34 @@ static int erps_fsm_init(struct erps_node *node)
 	return ret;
 }
 
+static int erps_link_init(struct erps_link *lnk)
+{
+	int ret;
+	struct net_if *vlan_iface;
+	struct erps_node *node = erps_link_get_node(lnk);
+	struct net_if *iface = net_if_lookup_by_dev(lnk->dev);
+
+	if (!iface) {
+		return -ENODEV;
+	}
+
+	ret = net_eth_vlan_enable(iface, node->ctrl_vid);
+	if (ret) {
+		NET_ERR("Error enabling VLAN 0x%x: %d", (unsigned int)node->ctrl_vid, -ret);
+		return ret;
+	}
+
+	vlan_iface = net_eth_get_vlan_iface(iface, node->ctrl_vid);
+	if (!vlan_iface) {
+		return -ENODEV;
+	}
+
+	NET_DBG("Bringing up iface %d", net_if_get_by_iface(vlan_iface));
+	net_if_up(vlan_iface);
+
+	return 0;
+}
+
 static int erps_node_init(struct erps_node *node)
 {
 	int ret;
@@ -1204,8 +1210,8 @@ static int erps_node_init(struct erps_node *node)
 	k_work_init_delayable(&node->wtb_dwork, erps_wtb_work);
 
 	ret = k_mutex_init(&node->fsm_mutex);
-	if (!ret) {
-		ret = erps_enable_vlan(node);
+	for (unsigned int i = 0u; !ret && i < ARRAY_SIZE(node->ports); ++i) {
+		ret = erps_link_init(&node->ports[i]);
 	}
 	if (!ret) {
 		ret = erps_fsm_init(node);
