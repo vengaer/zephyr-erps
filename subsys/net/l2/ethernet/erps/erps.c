@@ -57,16 +57,6 @@ enum {
 
 	/* TX burst period, in us */
 	ERPS_TX_BURST_PERIOD	= 1,
-
-	/* About continuous WTB/R_RUNNING, the spec. says only
-	*
-	*   While a delay timer is running, the appropriate WTR or the WTB Running signal is continuously
-	*   generated.
-	*
-	* Nothing about the frequency of said generation. Since the signal is handled by the
-	* same state machine as R-APS dittos, assuming the same frequency seems appropriate
-	*/
-	ERPS_WTX_RUNNING_PERIOD = ERPS_TX_PERIOD,
 };
 
 
@@ -157,12 +147,6 @@ struct erps_node {
 
 	/* Guard timer */
 	k_timepoint_t guard_timer_expiry;
-
-	/* WTR timer expiry */
-	k_timepoint_t wtr_expiry;
-
-	/* WTB timer expiry */
-	k_timepoint_t wtb_expiry;
 
 	/* Ports connected to the node */
 	struct erps_link ports[2u];
@@ -450,13 +434,6 @@ int erps_node_unblock_non_failed(struct erps_node *node)
 	return ret;
 }
 
-static inline int erps_node_wtr_start(struct erps_node *node)
-{
-	int ret = k_work_reschedule(&node->wtr_dwork,
-				K_MINUTES(node->wtr_duration));
-	return ret < 0 ? ret : 0;
-}
-
 int erps_node_sched_tx(struct erps_node *node, uint8_t req_state,
 		uint8_t subcode, uint8_t status)
 {
@@ -681,6 +658,8 @@ static int erps_fsm_post_locked(struct erps_link *lnk, enum erps_request req,
 	int ret;
 	struct erps_node *node = erps_link_get_node(lnk);
 
+	NET_DBG("Incoming request '%s'", erps_request_name(req));
+
 	ret = erps_fsm_resolve_req_prio(node, req);
 	if (ret == -EBUSY) {
 		NET_DBG("Request '%s' ignored by priority logic", erps_request_name(req));
@@ -743,6 +722,7 @@ int net_erps_fsm_post(struct net_if *iface, enum erps_request req)
 
 void erps_node_start_guard_timer(struct erps_node *node)
 {
+	NET_DBG("Starting guard timer");
 	node->guard_timer_expiry =
 		sys_timepoint_calc(K_MSEC(node->guard_timer_duration));
 }
@@ -751,6 +731,8 @@ static int erps_node_start_timer(struct erps_node *node,
 		struct k_work_delayable *dwork)
 {
 	int ret;
+	uint32_t duration;
+	k_timeout_t expiry;
 	enum erps_request req;
 
 	if (k_work_delayable_is_pending(dwork)) {
@@ -760,11 +742,15 @@ static int erps_node_start_timer(struct erps_node *node,
 
 	if (dwork == &node->wtr_dwork) {
 		req = ERPS_REQ_WTR_RUNNING;
-		node->wtr_expiry = sys_timepoint_calc(K_MINUTES(node->wtr_duration));
+		NET_DBG("Expires in %u mins", node->wtr_duration);
+		expiry = K_MINUTES(node->wtr_duration);
 	}
 	else {
 		req = ERPS_REQ_WTB_RUNNING;
-		node->wtb_expiry = sys_timepoint_calc(K_MSEC(erps_wtb_duration(node)));
+		duration = erps_wtb_duration(node);
+
+		NET_DBG("Expires in %u ms", duration);
+		expiry = K_MSEC(duration);
 	}
 
 	/* WTR/WTB timers are managed entirely by the FSM. This means that the
@@ -780,18 +766,20 @@ static int erps_node_start_timer(struct erps_node *node,
 		/* Don't care, the signal would have been ignored by the FSM either way */
 	}
 
-	ret = k_work_reschedule(dwork, K_MSEC(ERPS_WTX_RUNNING_PERIOD));
+	ret = k_work_reschedule(dwork, expiry);
 
 	return ret < 0 ? ret : 0;
 }
 
 int erps_node_start_wtr(struct erps_node *node)
 {
+	NET_DBG("Starting WTR");
 	return erps_node_start_timer(node, &node->wtr_dwork);
 }
 
 int erps_node_start_wtb(struct erps_node *node)
 {
+	NET_DBG("Starting WTB");
 	return erps_node_start_timer(node, &node->wtb_dwork);
 }
 
@@ -803,13 +791,11 @@ void erps_node_stop_tx(struct erps_node *node)
 
 void erps_node_stop_wtr(struct erps_node *node)
 {
-	node->wtr_expiry = sys_timepoint_calc(K_NO_WAIT);
 	k_work_cancel_delayable(&node->wtr_dwork);
 }
 
 void erps_node_stop_wtb(struct erps_node *node)
 {
-	node->wtb_expiry = sys_timepoint_calc(K_NO_WAIT);
 	k_work_cancel_delayable(&node->wtb_dwork);
 }
 
@@ -1132,21 +1118,11 @@ static int erps_link_send_pdu(struct erps_link *lnk, struct net_if *iface)
 	return ret;
 }
 
-static void erps_tx_work(struct k_work *work)
+static void erps_node_tx_single_pdu(struct erps_node *node)
 {
 	int ret;
-	k_timeout_t delay;
 	struct erps_link *lnk;
-	struct erps_node *node;
 	struct net_if *iface, *vlan_iface;
-	struct k_work_delayable *dwork = k_work_delayable_from_work(work);
-
-	node = CONTAINER_OF(dwork, struct erps_node, tx_dwork);
-
-	if (IS_ENABLED(CONFIG_MULTITHREADING)) {
-		/* Syncronize with TX scheduler */
-		atomic_thread_fence(memory_order_acquire);
-	}
 
 	for (unsigned int i = 0u; i < ARRAY_SIZE(node->ports); ++i) {
 		lnk = &node->ports[i];
@@ -1183,6 +1159,42 @@ static void erps_tx_work(struct k_work *work)
 				net_if_get_by_iface(vlan_iface));
 		}
 	}
+}
+
+static void erps_tx_work(struct k_work *work)
+{
+	int ret;
+	k_timeout_t delay;
+	struct erps_node *node;
+	struct k_work_delayable *dwork = k_work_delayable_from_work(work);
+
+	node = CONTAINER_OF(dwork, struct erps_node, tx_dwork);
+
+	/* The specification mandates that the running signals are generated continuously
+	 * but says nothing about the period. Might as well piggy-back off the TX timer.
+	 */
+	if (k_work_delayable_is_pending(&node->wtr_dwork)) {
+		NET_DBG("WTR PENDING");
+		ret = erps_fsm_post(&node->ports[0u], ERPS_REQ_WTR_RUNNING, NULL);
+		if (ret) {
+			NET_WARN("Error posting WTR Running");
+		}
+	}
+
+	if (k_work_delayable_is_pending(&node->wtb_dwork)) {
+		NET_DBG("WTB PENDING");
+		ret = erps_fsm_post(&node->ports[0u], ERPS_REQ_WTB_RUNNING, NULL);
+		if (ret) {
+			NET_WARN("Error posting WTB running");
+		}
+	}
+
+	/* Syncronize with TX scheduler */
+	if (IS_ENABLED(CONFIG_MULTITHREADING)) {
+		atomic_thread_fence(memory_order_acquire);
+	}
+
+	erps_node_tx_single_pdu(node);
 
 	delay = K_USEC(ERPS_TX_PERIOD);
 	if (node->tx_burst) {
@@ -1199,23 +1211,15 @@ static void erps_tx_work(struct k_work *work)
 static void erps_wtr_work(struct k_work *work)
 {
 	int ret;
-	enum erps_request req;
 	struct erps_node *node;
 	struct k_work_delayable *dwork = k_work_delayable_from_work(work);
 
+	NET_DBG("WTR timer expired");
+
 	node = CONTAINER_OF(dwork, struct erps_node, wtr_dwork);
 
-	req = ERPS_REQ_WTR_EXPIRES;
-	if (!sys_timepoint_expired(node->wtr_expiry)) {
-		req = ERPS_REQ_WTR_RUNNING;
-		ret = k_work_reschedule(dwork, K_MSEC(5000));
-		if (ret < 0) {
-			NET_ERR("Could not reschedule WTR: %d", -ret);
-		}
-	}
-
 	/* Doesn't matter on which link the event is triggered */
-	ret = erps_fsm_post(&node->ports[0u], req, NULL);
+	ret = erps_fsm_post(&node->ports[0u], ERPS_REQ_WTR_EXPIRES, NULL);
 	if (ret) {
 		NET_ERR("Error handling WTR expiry: %d", -ret);
 	}
@@ -1224,23 +1228,15 @@ static void erps_wtr_work(struct k_work *work)
 static void erps_wtb_work(struct k_work *work)
 {
 	int ret;
-	enum erps_request req;
 	struct erps_node *node;
 	struct k_work_delayable *dwork = k_work_delayable_from_work(work);
 
+	NET_DBG("WTB timer expired");
+
 	node = CONTAINER_OF(dwork, struct erps_node, wtb_dwork);
 
-	req = ERPS_REQ_WTB_EXPIRES;
-	if (!sys_timepoint_expired(node->wtb_expiry)) {
-		req = ERPS_REQ_WTB_RUNNING;
-		ret = k_work_reschedule(dwork, K_MSEC(5000));
-		if (ret < 0) {
-			NET_ERR("Could not reschedule WTB: %d", -ret);
-		}
-	}
-
 	/* Doesn't matter on which link the event is triggered */
-	ret = erps_fsm_post(&node->ports[0u], req, NULL);
+	ret = erps_fsm_post(&node->ports[0u], ERPS_REQ_WTB_EXPIRES, NULL);
 	if (ret) {
 		NET_ERR("Error handling WTB expiry: %d", -ret);
 	}
@@ -1273,8 +1269,6 @@ static int erps_fsm_init(struct erps_node *node)
 	struct erps_link *non_rpl = erps_node_other_link(node, rpl);
 
 	node->guard_timer_expiry = sys_timepoint_calc(K_NO_WAIT);
-	node->wtr_expiry = node->guard_timer_expiry;
-	node->wtb_expiry = node->guard_timer_expiry;
 
 	rpl_owner = erps_node_is_rpl_owner(node);
 	if (rpl_owner || erps_node_is_rpl_nbr(node)) {
@@ -1289,7 +1283,7 @@ static int erps_fsm_init(struct erps_node *node)
 			ret = erps_node_sched_tx(node, RAPS_NR, 0u, 0u);
 		}
 		if (!ret && rpl_owner && erps_node_is_revertive(node)) {
-			ret = erps_node_wtr_start(node);
+			ret = erps_node_start_wtr(node);
 		}
 	}
 	else {
