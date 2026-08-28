@@ -1255,8 +1255,7 @@ static int erps_node_init(struct erps_node *node)
 										               \
 	BUILD_ASSERT(                                                                          \
 		DT_INST_PROP_LEN(n, itu_t_ring_links) +                                        \
-			DT_INST_NODE_HAS_PROP(n, itu_t_ring_protection_link) ==                \
-		2u,								               \
+			DT_INST_NODE_HAS_PROP(n, itu_t_ring_protection_link) == 2u,            \
 		"Each node requires exactly two links"                                         \
 	);                                                                                     \
 										               \
