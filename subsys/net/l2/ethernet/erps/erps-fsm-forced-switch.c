@@ -66,31 +66,31 @@ static int erps_fsm_raps_nr_fs(struct erps_link *lnk, bool rb)
 	return ret;
 }
 
-int erps_fsm_post_forced_switch(struct erps_link *lnk, enum raps_request req)
+int erps_fsm_post_forced_switch(struct erps_link *lnk, enum erps_request req)
 {
 	bool rb = false;
 
 	switch (req) {
-	case RAPS_REQ_CLEAR:		/* Table 10-2, row 44 */
+	case ERPS_REQ_CLEAR:		/* Table 10-2, row 44 */
 		return erps_fsm_clear_fs(lnk);
-	case RAPS_REQ_FS:		/* Table 10-2, row 45 */
+	case ERPS_REQ_FS:		/* Table 10-2, row 45 */
 		return erps_fsm_fs_fs(lnk);
-	case RAPS_REQ_RAPS_FS:		/* Table 10-2, row 46 */
-	case RAPS_REQ_SF:		/* Table 10-2, row 47 */
-	case RAPS_REQ_CLEAR_SF:		/* Table 10-2, row 48 */
-	case RAPS_REQ_RAPS_SF:		/* Table 10-2, row 49 */
-	case RAPS_REQ_RAPS_MS:		/* Table 10-2, row 50 */
-	case RAPS_REQ_MS:		/* Table 10-2, row 51 */
-	case RAPS_REQ_WTR_EXPIRES:	/* Table 10-2, row 52 */
-	case RAPS_REQ_WTR_RUNNING:	/* Table 10-2, row 53 */
-	case RAPS_REQ_WTB_EXPIRES:	/* Table 10-2, row 54 */
-	case RAPS_REQ_WTB_RUNNING:	/* Table 10-2, row 55 */
+	case ERPS_REQ_RAPS_FS:		/* Table 10-2, row 46 */
+	case ERPS_REQ_SF:		/* Table 10-2, row 47 */
+	case ERPS_REQ_CLEAR_SF:		/* Table 10-2, row 48 */
+	case ERPS_REQ_RAPS_SF:		/* Table 10-2, row 49 */
+	case ERPS_REQ_RAPS_MS:		/* Table 10-2, row 50 */
+	case ERPS_REQ_MS:		/* Table 10-2, row 51 */
+	case ERPS_REQ_WTR_EXPIRES:	/* Table 10-2, row 52 */
+	case ERPS_REQ_WTR_RUNNING:	/* Table 10-2, row 53 */
+	case ERPS_REQ_WTB_EXPIRES:	/* Table 10-2, row 54 */
+	case ERPS_REQ_WTB_RUNNING:	/* Table 10-2, row 55 */
 		/* No action */
 		return 0;
-	case RAPS_REQ_RAPS_NR_RB:	/* Table 10-2, row 56 */
+	case ERPS_REQ_RAPS_NR_RB:	/* Table 10-2, row 56 */
 		rb = true;
 		__fallthrough;
-	case RAPS_REQ_RAPS_NR:		/* Table 10-2, row 57 */
+	case ERPS_REQ_RAPS_NR:		/* Table 10-2, row 57 */
 		return erps_fsm_raps_nr_fs(lnk, rb);
 	default:
 		break;

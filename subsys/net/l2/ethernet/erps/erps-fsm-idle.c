@@ -115,37 +115,37 @@ static int erps_fsm_raps_nr_idle(struct erps_link *lnk,
 	return ret;
 }
 
-int erps_fsm_post_idle(struct erps_link *lnk, enum raps_request req,
+int erps_fsm_post_idle(struct erps_link *lnk, enum erps_request req,
 	const struct raps_pdu *pdu)
 {
 	switch (req) {
-	case RAPS_REQ_CLEAR:		/* Table 10-2, row 2 */
+	case ERPS_REQ_CLEAR:		/* Table 10-2, row 2 */
 		/* No action */
 		return 0;
-	case RAPS_REQ_FS:		/* Table 10-2, row 3 */
+	case ERPS_REQ_FS:		/* Table 10-2, row 3 */
 		return erps_fsm_fs_idle(lnk);
-	case RAPS_REQ_RAPS_FS:		/* Table 10-2, row 4 */
+	case ERPS_REQ_RAPS_FS:		/* Table 10-2, row 4 */
 		return erps_fsm_raps_fs_idle(lnk);
-	case RAPS_REQ_SF:		/* Table 10-2, row 5 */
+	case ERPS_REQ_SF:		/* Table 10-2, row 5 */
 		return erps_fsm_sf_idle(lnk);
-	case RAPS_REQ_CLEAR_SF:		/* Table 10-2, row 6 */
+	case ERPS_REQ_CLEAR_SF:		/* Table 10-2, row 6 */
 		/* No action */
 		return 0;
-	case RAPS_REQ_RAPS_SF:		/* Table 10-2, row 7 */
+	case ERPS_REQ_RAPS_SF:		/* Table 10-2, row 7 */
 		return erps_fsm_raps_sf_idle(lnk);
-	case RAPS_REQ_RAPS_MS:		/* Table 10-2, row 8 */
+	case ERPS_REQ_RAPS_MS:		/* Table 10-2, row 8 */
 		return erps_fsm_raps_ms_idle(lnk);
-	case RAPS_REQ_MS:		/* Table 10-2, row 9 */
+	case ERPS_REQ_MS:		/* Table 10-2, row 9 */
 		return erps_fsm_ms_idle(lnk);
-	case RAPS_REQ_WTR_EXPIRES:	/* Table 10-2, row 10 */
-	case RAPS_REQ_WTR_RUNNING:	/* Table 10-2, row 11 */
-	case RAPS_REQ_WTB_EXPIRES:	/* Table 10-2, row 12 */
-	case RAPS_REQ_WTB_RUNNING:	/* Table 10-2, row 13 */
+	case ERPS_REQ_WTR_EXPIRES:	/* Table 10-2, row 10 */
+	case ERPS_REQ_WTR_RUNNING:	/* Table 10-2, row 11 */
+	case ERPS_REQ_WTB_EXPIRES:	/* Table 10-2, row 12 */
+	case ERPS_REQ_WTB_RUNNING:	/* Table 10-2, row 13 */
 		/* No action */
 		return 0;
-	case RAPS_REQ_RAPS_NR_RB:	/* Table 10-2, row 14 */
+	case ERPS_REQ_RAPS_NR_RB:	/* Table 10-2, row 14 */
 		return erps_fsm_raps_nr_rb_idle(lnk);
-	case RAPS_REQ_RAPS_NR:		/* Table 10-2, row 15 */
+	case ERPS_REQ_RAPS_NR:		/* Table 10-2, row 15 */
 		return erps_fsm_raps_nr_idle(lnk, pdu);
 	default:
 		break;

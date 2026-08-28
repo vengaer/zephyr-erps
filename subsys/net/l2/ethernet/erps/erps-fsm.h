@@ -8,6 +8,7 @@
 #define ZEPHYR_SUBSYS_NET_L2_ETHERNET_ERPS_ERPS_FSM_H_
 
 #include "r-aps.h"
+#include "erps-internal.h"
 
 struct erps_link;
 struct erps_node;
@@ -39,7 +40,7 @@ enum erps_node_state {
  * @retval 0      Event successfully processed
  * @retval -errno Error code indicating what went wrong
  */
-int net_erps_fsm_post(struct net_if *iface, enum raps_request req);
+int net_erps_fsm_post(struct net_if *iface, enum erps_request req);
 
 /*
  * Process request while in idle state
@@ -48,7 +49,7 @@ int net_erps_fsm_post(struct net_if *iface, enum raps_request req);
  * param req: The request
  * param pdu: R-APS PDU that triggered the request, if any
  */
-int erps_fsm_post_idle(struct erps_link *lnk, enum raps_request req,
+int erps_fsm_post_idle(struct erps_link *lnk, enum erps_request req,
 	const struct raps_pdu *pdu);
 
 /*
@@ -57,7 +58,7 @@ int erps_fsm_post_idle(struct erps_link *lnk, enum raps_request req,
  * param lnk: Link on which the request is to be processed
  * param req: The request
  */
-int erps_fsm_post_protection(struct erps_link *lnk, enum raps_request req);
+int erps_fsm_post_protection(struct erps_link *lnk, enum erps_request req);
 
 /*
  * Process request while in manual switch state
@@ -65,14 +66,14 @@ int erps_fsm_post_protection(struct erps_link *lnk, enum raps_request req);
  * param lnk: Link on which the request is to be processed
  * param req: The request
  */
-int erps_fsm_post_manual_switch(struct erps_link *lnk, enum raps_request req);
+int erps_fsm_post_manual_switch(struct erps_link *lnk, enum erps_request req);
 /*
  * Process request while in forced switch state
  *
  * param lnk: Link on which the request is to be processed
  * param req: The request
  */
-int erps_fsm_post_forced_switch(struct erps_link *lnk, enum raps_request req);
+int erps_fsm_post_forced_switch(struct erps_link *lnk, enum erps_request req);
 /*
  * Process request while in pending state
  *
@@ -80,7 +81,7 @@ int erps_fsm_post_forced_switch(struct erps_link *lnk, enum raps_request req);
  * param req: The request
  * param pdu: R-APS PDU that triggered the request, if any
  */
-int erps_fsm_post_pending(struct erps_link *lnk, enum raps_request req,
+int erps_fsm_post_pending(struct erps_link *lnk, enum erps_request req,
 	const struct raps_pdu *pdu);
 
 /*

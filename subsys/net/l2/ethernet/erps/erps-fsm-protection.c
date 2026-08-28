@@ -89,35 +89,35 @@ static int erps_fsm_raps_nr_protection(struct erps_link *lnk, bool rb)
 	return ret;
 }
 
-int erps_fsm_post_protection(struct erps_link *lnk, enum raps_request req)
+int erps_fsm_post_protection(struct erps_link *lnk, enum erps_request req)
 {
 	bool rb = false;
 
 	switch (req) {
-	case RAPS_REQ_CLEAR:		/* Table 10-2, row 16 */
+	case ERPS_REQ_CLEAR:		/* Table 10-2, row 16 */
 		/* No action */
 		return 0;
-	case RAPS_REQ_FS:		/* Table 10-2, row 17 */
+	case ERPS_REQ_FS:		/* Table 10-2, row 17 */
 		return erps_fsm_fs_protection(lnk);
-	case RAPS_REQ_RAPS_FS:		/* Table 10-2, row 18 */
+	case ERPS_REQ_RAPS_FS:		/* Table 10-2, row 18 */
 		return erps_fsm_raps_fs_protection(lnk);
-	case RAPS_REQ_SF:		/* Table 10-2, row 19 */
+	case ERPS_REQ_SF:		/* Table 10-2, row 19 */
 		return erps_fsm_sf_protection(lnk);
-	case RAPS_REQ_CLEAR_SF:		/* Table 10-2, row 20 */
+	case ERPS_REQ_CLEAR_SF:		/* Table 10-2, row 20 */
 		return erps_fsm_clear_sf_protection(lnk);
-	case RAPS_REQ_RAPS_SF:		/* Table 10-2, row 21 */
-	case RAPS_REQ_RAPS_MS:		/* Table 10-2, row 22 */
-	case RAPS_REQ_MS:		/* Table 10-2, row 23 */
-	case RAPS_REQ_WTR_EXPIRES:	/* Table 10-2, row 24 */
-	case RAPS_REQ_WTR_RUNNING:	/* Table 10-2, row 25 */
-	case RAPS_REQ_WTB_EXPIRES:	/* Table 10-2, row 26 */
-	case RAPS_REQ_WTB_RUNNING:	/* Table 10-2, row 27 */
+	case ERPS_REQ_RAPS_SF:		/* Table 10-2, row 21 */
+	case ERPS_REQ_RAPS_MS:		/* Table 10-2, row 22 */
+	case ERPS_REQ_MS:		/* Table 10-2, row 23 */
+	case ERPS_REQ_WTR_EXPIRES:	/* Table 10-2, row 24 */
+	case ERPS_REQ_WTR_RUNNING:	/* Table 10-2, row 25 */
+	case ERPS_REQ_WTB_EXPIRES:	/* Table 10-2, row 26 */
+	case ERPS_REQ_WTB_RUNNING:	/* Table 10-2, row 27 */
 		/* No action */
 		return 0;
-	case RAPS_REQ_RAPS_NR_RB:	/* Table 10-2, row 28 */
+	case ERPS_REQ_RAPS_NR_RB:	/* Table 10-2, row 28 */
 		rb = true;
 		__fallthrough;
-	case RAPS_REQ_RAPS_NR:		/* Table 10-2, row 29 */
+	case ERPS_REQ_RAPS_NR:		/* Table 10-2, row 29 */
 		return erps_fsm_raps_nr_protection(lnk, rb);
 	default:
 		break;

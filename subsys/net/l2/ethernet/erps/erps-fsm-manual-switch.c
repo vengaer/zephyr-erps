@@ -122,37 +122,37 @@ static int erps_fsm_raps_nr_ms(struct erps_link *lnk, bool rb)
 	return ret;
 }
 
-int erps_fsm_post_manual_switch(struct erps_link *lnk, enum raps_request req)
+int erps_fsm_post_manual_switch(struct erps_link *lnk, enum erps_request req)
 {
 	bool rb = false;
 
 	switch (req) {
-	case RAPS_REQ_CLEAR:		/* Table 10-2, row 30 */
+	case ERPS_REQ_CLEAR:		/* Table 10-2, row 30 */
 		return erps_fsm_clear_ms(lnk);
-	case RAPS_REQ_FS:		/* Table 10-2, row 31 */
+	case ERPS_REQ_FS:		/* Table 10-2, row 31 */
 		return erps_fsm_fs_ms(lnk);
-	case RAPS_REQ_RAPS_FS:		/* Table 10-2, row 32 */
+	case ERPS_REQ_RAPS_FS:		/* Table 10-2, row 32 */
 		return erps_fsm_raps_fs_ms(lnk);
-	case RAPS_REQ_SF:		/* Table 10-2, row 33 */
+	case ERPS_REQ_SF:		/* Table 10-2, row 33 */
 		return erps_fsm_sf_ms(lnk);
-	case RAPS_REQ_CLEAR_SF:		/* Table 10-2, row 34 */
+	case ERPS_REQ_CLEAR_SF:		/* Table 10-2, row 34 */
 		/* No action */
 		return 0;
-	case RAPS_REQ_RAPS_SF:		/* Table 10-2, row 35 */
+	case ERPS_REQ_RAPS_SF:		/* Table 10-2, row 35 */
 		return erps_fsm_raps_sf_ms(lnk);
-	case RAPS_REQ_RAPS_MS:		/* Table 10-2, row 36 */
+	case ERPS_REQ_RAPS_MS:		/* Table 10-2, row 36 */
 		return erps_fsm_raps_ms_ms(lnk);
-	case RAPS_REQ_MS:		/* Table 10-2, row 37 */
-	case RAPS_REQ_WTR_EXPIRES:	/* Table 10-2, row 38 */
-	case RAPS_REQ_WTR_RUNNING:	/* Table 10-2, row 39 */
-	case RAPS_REQ_WTB_EXPIRES:	/* Table 10-2, row 40 */
-	case RAPS_REQ_WTB_RUNNING:	/* Table 10-2, row 41 */
+	case ERPS_REQ_MS:		/* Table 10-2, row 37 */
+	case ERPS_REQ_WTR_EXPIRES:	/* Table 10-2, row 38 */
+	case ERPS_REQ_WTR_RUNNING:	/* Table 10-2, row 39 */
+	case ERPS_REQ_WTB_EXPIRES:	/* Table 10-2, row 40 */
+	case ERPS_REQ_WTB_RUNNING:	/* Table 10-2, row 41 */
 		/* No action */
 		return 0;
-	case RAPS_REQ_RAPS_NR_RB:	/* Table 10-2, row 42 */
+	case ERPS_REQ_RAPS_NR_RB:	/* Table 10-2, row 42 */
 		rb = true;
 		__fallthrough;
-	case RAPS_REQ_RAPS_NR:		/* Table 10-2, row 43 */
+	case ERPS_REQ_RAPS_NR:		/* Table 10-2, row 43 */
 		return erps_fsm_raps_nr_ms(lnk, rb);
 	default:
 		break;

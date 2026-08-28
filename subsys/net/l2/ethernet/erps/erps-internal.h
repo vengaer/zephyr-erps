@@ -15,6 +15,62 @@
 struct erps_link;
 struct erps_node;
 
+/**
+ * @brief Request/state and status
+ *
+ * Lower value has higher priority.
+ *
+ * See Table 10-1 in the specification
+ */
+enum erps_request {
+
+	/** Clear */
+	ERPS_REQ_CLEAR,
+
+	/** Forced switch */
+	ERPS_REQ_FS,
+
+	/** R-APS (forced switch) */
+	ERPS_REQ_RAPS_FS,
+
+	/** Local signal fail */
+	ERPS_REQ_SF,
+
+	/** Local clear signal fail */
+	ERPS_REQ_CLEAR_SF,
+
+	/** R-APS (signal failure) */
+	ERPS_REQ_RAPS_SF,
+
+	/** R-APS (manual switch) */
+	ERPS_REQ_RAPS_MS,
+
+	/** Manual switch */
+	ERPS_REQ_MS,
+
+	/** Wait to restore expires */
+	ERPS_REQ_WTR_EXPIRES,
+
+	/** Wait to restore running */
+	ERPS_REQ_WTR_RUNNING,
+
+	/** Wait to block expires */
+	ERPS_REQ_WTB_EXPIRES,
+
+	/** Wait to block running */
+	ERPS_REQ_WTB_RUNNING,
+
+	/** R-APS (no request, RPL blocked) */
+	ERPS_REQ_RAPS_NR_RB,
+
+	/** R-APS (no request) */
+	ERPS_REQ_RAPS_NR,
+
+	/** Invalid request */
+	ERPS_REQ_INVALID,
+};
+
+
 /*
  * Get ERPS node associated with provided link.
  *

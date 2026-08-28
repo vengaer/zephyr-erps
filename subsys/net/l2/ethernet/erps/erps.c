@@ -584,39 +584,39 @@ void erps_fsm_transition(struct erps_node *node, enum erps_node_state next)
 static inline bool erps_fsm_clear_valid(const struct erps_node *node)
 {
 	switch (node->lcmd) {
-	case RAPS_REQ_FS:
-	case RAPS_REQ_MS:
+	case ERPS_REQ_FS:
+	case ERPS_REQ_MS:
 		return true;
 	default:
 		break;
 	}
 
 	return erps_node_is_rpl_owner(node) &&
-			node->lcmd != RAPS_REQ_RAPS_FS &&
-			node->lcmd != RAPS_REQ_RAPS_MS;
+			node->lcmd != ERPS_REQ_RAPS_FS &&
+			node->lcmd != ERPS_REQ_RAPS_MS;
 }
 
-static int erps_fsm_resolve_req_prio(struct erps_node *node, enum raps_request req)
+static int erps_fsm_resolve_req_prio(struct erps_node *node, enum erps_request req)
 {
-	if (req == RAPS_REQ_CLEAR && !erps_fsm_clear_valid(node)) {
+	if (req == ERPS_REQ_CLEAR && !erps_fsm_clear_valid(node)) {
 		/* Clear not allowed in this state */
 		return -EINVAL;
 	}
 
-	if (req == RAPS_REQ_CLEAR_SF && node->lcmd == RAPS_REQ_SF) {
-		node->lcmd = RAPS_REQ_INVALID;
+	if (req == ERPS_REQ_CLEAR_SF && node->lcmd == ERPS_REQ_SF) {
+		node->lcmd = ERPS_REQ_INVALID;
 	}
 
 	if (req < node->lcmd) {
 		switch (req) {
-		case RAPS_REQ_CLEAR:
-		case RAPS_REQ_FS:
-		case RAPS_REQ_MS:
+		case ERPS_REQ_CLEAR:
+		case ERPS_REQ_FS:
+		case ERPS_REQ_MS:
 			NET_DBG("Local command is 0x%x", (unsigned int)req);
 			node->lcmd = req;
 			break;
 		default:
-			node->lcmd = RAPS_REQ_INVALID;
+			node->lcmd = ERPS_REQ_INVALID;
 			break;
 		}
 	}
@@ -630,7 +630,7 @@ static int erps_fsm_resolve_req_prio(struct erps_node *node, enum raps_request r
 	return 0;
 }
 
-static int erps_fsm_post_locked(struct erps_link *lnk, enum raps_request req,
+static int erps_fsm_post_locked(struct erps_link *lnk, enum erps_request req,
 		const struct raps_pdu *pdu)
 {
 	int ret;
@@ -664,7 +664,7 @@ static int erps_fsm_post_locked(struct erps_link *lnk, enum raps_request req,
 	return ret;
 }
 
-static inline int erps_fsm_post(struct erps_link *lnk, enum raps_request req,
+static inline int erps_fsm_post(struct erps_link *lnk, enum erps_request req,
 		const struct raps_pdu *pdu)
 {
 	int ret;
@@ -681,7 +681,7 @@ static inline int erps_fsm_post(struct erps_link *lnk, enum raps_request req,
 	return ret;
 }
 
-int net_erps_fsm_post(struct net_if *iface, enum raps_request req)
+int net_erps_fsm_post(struct net_if *iface, enum erps_request req)
 {
 	struct erps_link *lnk;
 
@@ -703,7 +703,7 @@ static int erps_node_start_timer(struct erps_node *node,
 		struct k_work_delayable *dwork)
 {
 	int ret;
-	enum raps_request req;
+	enum erps_request req;
 
 	if (k_work_delayable_is_pending(dwork)) {
 		NET_DBG("Timer already running");
@@ -711,11 +711,11 @@ static int erps_node_start_timer(struct erps_node *node,
 	}
 
 	if (dwork == &node->wtr_dwork) {
-		req = RAPS_REQ_WTR_RUNNING;
+		req = ERPS_REQ_WTR_RUNNING;
 		node->wtr_expiry = sys_timepoint_calc(K_MINUTES(node->wtr_duration));
 	}
 	else {
-		req = RAPS_REQ_WTB_RUNNING;
+		req = ERPS_REQ_WTB_RUNNING;
 		node->wtb_expiry = sys_timepoint_calc(K_MSEC(erps_wtb_duration(node)));
 	}
 
@@ -766,7 +766,7 @@ void erps_node_stop_wtb(struct erps_node *node)
 }
 
 /* Conditional FDB flush, Section 10.1.10 */
-static int erps_raps_node_id_bpr_flush(struct erps_link *lnk, enum raps_request req,
+static int erps_raps_node_id_bpr_flush(struct erps_link *lnk, enum erps_request req,
 								const struct raps_pdu *pdu)
 {
 	int ret;
@@ -788,7 +788,7 @@ static int erps_raps_node_id_bpr_flush(struct erps_link *lnk, enum raps_request 
 	oth_last_node_id = &oth_lnk->last_node_id;
 
 	/* R-APS(NR) does nothing but delete the (node ID,BPR) pair */
-	if (req == RAPS_REQ_RAPS_NR) {
+	if (req == ERPS_REQ_RAPS_NR) {
 		erps_link_delete_node_id_bpr(lnk);
 		return 0;
 	}
@@ -858,7 +858,7 @@ static enum net_verdict erps_raps_recv(struct erps_link *lnk, struct net_if *ifa
 								const struct raps_pdu *pdu)
 {
 	int ret;
-	enum raps_request req;
+	enum erps_request req;
 	uint_fast8_t req_state;
 	struct erps_node *node = erps_link_get_node(lnk);
 
@@ -879,28 +879,28 @@ static enum net_verdict erps_raps_recv(struct erps_link *lnk, struct net_if *ifa
 		return NET_DROP;
 	}
 
-	BUILD_ASSERT(RAPS_REQ_RAPS_NR_RB == RAPS_REQ_RAPS_NR - 1, "");
+	BUILD_ASSERT(ERPS_REQ_RAPS_NR_RB == ERPS_REQ_RAPS_NR - 1, "");
 
 	switch (req_state) {
 	case RAPS_NR:
-		req = RAPS_REQ_RAPS_NR - raps_pdu_rb(pdu);
+		req = ERPS_REQ_RAPS_NR - raps_pdu_rb(pdu);
 		break;
 	case RAPS_MS:
 		if (node->raps_ver == ERPS_RAPS_VER_1) {
 			NET_DBG("MS not supported in version 1, dropping");
 			return NET_DROP;
 		}
-		req = RAPS_REQ_RAPS_MS;
+		req = ERPS_REQ_RAPS_MS;
 		break;
 	case RAPS_SF:
-		req = RAPS_REQ_RAPS_SF;
+		req = ERPS_REQ_RAPS_SF;
 		break;
 	case RAPS_FS:
 		if (node->raps_ver == ERPS_RAPS_VER_1) {
 			NET_DBG("FS not supported in version 1, dropping");
 			return NET_DROP;
 		}
-		req = RAPS_REQ_RAPS_FS;
+		req = ERPS_REQ_RAPS_FS;
 		break;
 	case RAPS_EVENT:
 		ret = erps_handle_raps_event(lnk, pdu);
@@ -1152,15 +1152,15 @@ static void erps_tx_work(struct k_work *work)
 static void erps_wtr_work(struct k_work *work)
 {
 	int ret;
-	enum raps_request req;
+	enum erps_request req;
 	struct erps_node *node;
 	struct k_work_delayable *dwork = k_work_delayable_from_work(work);
 
 	node = CONTAINER_OF(dwork, struct erps_node, wtr_dwork);
 
-	req = RAPS_REQ_WTR_EXPIRES;
+	req = ERPS_REQ_WTR_EXPIRES;
 	if (!sys_timepoint_expired(node->wtr_expiry)) {
-		req = RAPS_REQ_WTR_RUNNING;
+		req = ERPS_REQ_WTR_RUNNING;
 		ret = k_work_reschedule(dwork, K_MSEC(5000));
 		if (ret < 0) {
 			NET_ERR("Could not reschedule WTR: %d", -ret);
@@ -1177,15 +1177,15 @@ static void erps_wtr_work(struct k_work *work)
 static void erps_wtb_work(struct k_work *work)
 {
 	int ret;
-	enum raps_request req;
+	enum erps_request req;
 	struct erps_node *node;
 	struct k_work_delayable *dwork = k_work_delayable_from_work(work);
 
 	node = CONTAINER_OF(dwork, struct erps_node, wtb_dwork);
 
-	req = RAPS_REQ_WTB_EXPIRES;
+	req = ERPS_REQ_WTB_EXPIRES;
 	if (!sys_timepoint_expired(node->wtb_expiry)) {
-		req = RAPS_REQ_WTB_RUNNING;
+		req = ERPS_REQ_WTB_RUNNING;
 		ret = k_work_reschedule(dwork, K_MSEC(5000));
 		if (ret < 0) {
 			NET_ERR("Could not reschedule WTB: %d", -ret);
@@ -1362,7 +1362,7 @@ static int erps_node_init(struct erps_node *node)
 	k_work_init_delayable(&node->wtr_dwork, erps_wtr_work);
 	k_work_init_delayable(&node->wtb_dwork, erps_wtb_work);
 
-	node->lcmd = RAPS_REQ_INVALID;
+	node->lcmd = ERPS_REQ_INVALID;
 
 	ret = k_mutex_init(&node->fsm_mutex);
 	for (unsigned int i = 0u; !ret && i < ARRAY_SIZE(node->ports); ++i) {

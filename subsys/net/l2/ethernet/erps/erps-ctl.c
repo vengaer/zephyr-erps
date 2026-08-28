@@ -12,23 +12,23 @@
 
 int net_erps_ctl(struct net_if *iface, enum erps_event ev)
 {
-	enum raps_request req;
+	enum erps_request req;
 
 	switch (ev) {
 	case ERPS_SIGNAL_FAIL:
-		req = RAPS_REQ_SF;
+		req = ERPS_REQ_SF;
 		break;
 	case ERPS_CLEAR_SIGNAL_FAIL:
-		req = RAPS_REQ_CLEAR_SF;
+		req = ERPS_REQ_CLEAR_SF;
 		break;
 	case ERPS_ADM_CLEAR:
-		req = RAPS_REQ_CLEAR;
+		req = ERPS_REQ_CLEAR;
 		break;
 	case ERPS_ADM_FORCED_SWITCH:
-		req = RAPS_REQ_FS;
+		req = ERPS_REQ_FS;
 		break;
 	case ERPS_ADM_MANUAL_SWITCH:
-		req = RAPS_REQ_MS;
+		req = ERPS_REQ_MS;
 		break;
 	default:
 		return -EINVAL;

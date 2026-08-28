@@ -169,62 +169,6 @@ enum raps_req_state {
 };
 
 
-
-/**
- * @brief Request/state and status
- *
- * Lower value has higher priority.
- *
- * See Table 10-1 in the specification
- */
-enum raps_request {
-
-	/** Clear */
-	RAPS_REQ_CLEAR,
-
-	/** Forced switch */
-	RAPS_REQ_FS,
-
-	/** R-APS (forced switch) */
-	RAPS_REQ_RAPS_FS,
-
-	/** Local signal fail */
-	RAPS_REQ_SF,
-
-	/** Local clear signal fail */
-	RAPS_REQ_CLEAR_SF,
-
-	/** R-APS (signal failure) */
-	RAPS_REQ_RAPS_SF,
-
-	/** R-APS (manual switch) */
-	RAPS_REQ_RAPS_MS,
-
-	/** Manual switch */
-	RAPS_REQ_MS,
-
-	/** Wait to restore expires */
-	RAPS_REQ_WTR_EXPIRES,
-
-	/** Wait to restore running */
-	RAPS_REQ_WTR_RUNNING,
-
-	/** Wait to block expires */
-	RAPS_REQ_WTB_EXPIRES,
-
-	/** Wait to block running */
-	RAPS_REQ_WTB_RUNNING,
-
-	/** R-APS (no request, RPL blocked) */
-	RAPS_REQ_RAPS_NR_RB,
-
-	/** R-APS (no request) */
-	RAPS_REQ_RAPS_NR,
-
-	/** Invalid request */
-	RAPS_REQ_INVALID,
-};
-
 /**
  * @brief Determine whether or not the @c BPR flag is set in @p pdu.
  *

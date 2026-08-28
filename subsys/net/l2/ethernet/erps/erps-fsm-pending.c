@@ -307,40 +307,40 @@ static inline int erps_fsm_raps_nr_pending(struct erps_link *lnk,
 	return ret;
 }
 
-int erps_fsm_post_pending(struct erps_link *lnk, enum raps_request req,
+int erps_fsm_post_pending(struct erps_link *lnk, enum erps_request req,
 	const struct raps_pdu *pdu)
 {
 	switch (req) {
-	case RAPS_REQ_CLEAR:		/* Table 10-2, row 58 */
+	case ERPS_REQ_CLEAR:		/* Table 10-2, row 58 */
 		return erps_fsm_clear_pending(lnk);
-	case RAPS_REQ_FS:		/* Table 10-2, row 59 */
+	case ERPS_REQ_FS:		/* Table 10-2, row 59 */
 		return erps_fsm_fs_pending(lnk);
-	case RAPS_REQ_RAPS_FS:		/* Table 10-2, row 60 */
+	case ERPS_REQ_RAPS_FS:		/* Table 10-2, row 60 */
 		return erps_fsm_raps_fs_pending(lnk);
-	case RAPS_REQ_SF:		/* Table 10-2, row 61 */
+	case ERPS_REQ_SF:		/* Table 10-2, row 61 */
 		return erps_fsm_sf_pending(lnk);
-	case RAPS_REQ_CLEAR_SF:		/* Table 10-2, row 62 */
+	case ERPS_REQ_CLEAR_SF:		/* Table 10-2, row 62 */
 		/* No action */
 		return 0;
-	case RAPS_REQ_RAPS_SF:		/* Table 10-2, row 63 */
+	case ERPS_REQ_RAPS_SF:		/* Table 10-2, row 63 */
 		return erps_fsm_raps_sf_pending(lnk);
-	case RAPS_REQ_RAPS_MS:		/* Table 10-2, row 64 */
+	case ERPS_REQ_RAPS_MS:		/* Table 10-2, row 64 */
 		return erps_fsm_raps_ms_pending(lnk);
-	case RAPS_REQ_MS:		/* Table 10-2, row 65 */
+	case ERPS_REQ_MS:		/* Table 10-2, row 65 */
 		return erps_fsm_ms_pending(lnk);
-	case RAPS_REQ_WTR_EXPIRES:	/* Table 10-2, row 66 */
+	case ERPS_REQ_WTR_EXPIRES:	/* Table 10-2, row 66 */
 		return erps_fsm_wtr_expires_pending(lnk);
-	case RAPS_REQ_WTR_RUNNING:	/* Table 10-2, row 67 */
+	case ERPS_REQ_WTR_RUNNING:	/* Table 10-2, row 67 */
 		/* No action */
 		return 0;
-	case RAPS_REQ_WTB_EXPIRES:	/* Table 10-2, row 68 */
+	case ERPS_REQ_WTB_EXPIRES:	/* Table 10-2, row 68 */
 		return erps_fsm_wtb_expires_pending(lnk);
-	case RAPS_REQ_WTB_RUNNING:	/* Table 10-2, row 69 */
+	case ERPS_REQ_WTB_RUNNING:	/* Table 10-2, row 69 */
 		/* No action */
 		return 0;
-	case RAPS_REQ_RAPS_NR_RB:	/* Table 10-2, row 70 */
+	case ERPS_REQ_RAPS_NR_RB:	/* Table 10-2, row 70 */
 		return erps_fsm_raps_nr_rb_pending(lnk);
-	case RAPS_REQ_RAPS_NR:		/* Table 10-2, row 71 */
+	case ERPS_REQ_RAPS_NR:		/* Table 10-2, row 71 */
 		return erps_fsm_raps_nr_pending(lnk, pdu);
 	default:
 		break;
