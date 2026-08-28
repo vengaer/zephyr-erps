@@ -1024,9 +1024,9 @@ static void erps_tx_work(struct k_work *work)
 {
 	int ret;
 	k_timeout_t delay;
-	struct net_if *iface;
 	struct erps_link *lnk;
 	struct erps_node *node;
+	struct net_if *iface, *vlan_iface;
 	struct k_work_delayable *dwork = k_work_delayable_from_work(work);
 
 	node = CONTAINER_OF(dwork, struct erps_node, tx_dwork);
@@ -1045,7 +1045,19 @@ static void erps_tx_work(struct k_work *work)
 			continue;
 		}
 
-		ret = erps_link_send_pdu(lnk, iface);
+		if (!net_if_is_up(iface)) {
+			NET_DBG("Interface %d is down (%sRPL)", net_if_get_by_iface(iface),
+									lnk->rpl ? "" : "not ");
+			continue;
+		}
+
+		vlan_iface = net_eth_get_vlan_iface(iface, node->ctrl_vid);
+		if (!vlan_iface) {
+			NET_ERR("Found no VLAN interface for %d",
+				net_if_get_by_iface(iface));
+		}
+
+		ret = erps_link_send_pdu(lnk, vlan_iface);
 		if (ret) {
 			NET_ERR("Error sending R-APS PDU: %d", -ret);
 		}
