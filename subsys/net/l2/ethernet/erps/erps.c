@@ -59,12 +59,6 @@ enum {
 	ERPS_TX_BURST_PERIOD	= 1,
 };
 
-
-union erps_eth_hdr {
-	struct net_eth_hdr eth;
-	struct net_eth_vlan_hdr vlan;
-};
-
 /* Mutable parts of an R-APS PDU */
 struct raps_pdu_mut {
 	/* Request/state and subcode */
@@ -515,57 +509,43 @@ bool erps_node_is_revertive(const struct erps_node *node)
 	return node->revertive;
 }
 
-static int erps_read_eth_hdr(struct erps_link *lnk, struct net_pkt *pkt, union erps_eth_hdr *hdr)
+static int erps_read_vlan_hdr(struct erps_link *lnk, struct net_pkt *pkt,
+						struct net_eth_vlan_hdr *hdr)
 {
 	int ret;
 	size_t pkt_len;
-	uint16_t eth_type, vid;
+	uint16_t vid;
 	const struct erps_node *node = erps_link_get_node(lnk);
 
 	pkt_len = net_pkt_get_len(pkt);
 
-	if (unlikely(pkt_len < sizeof(hdr->eth))) {
+	if (unlikely(pkt_len < sizeof(*hdr))) {
 		NET_DBG("Packet does not contain a complete Ethernet header");
 		return -ENODATA;
 	}
 
 	net_pkt_cursor_init(pkt);
-	ret = net_pkt_read(pkt, hdr, sizeof(hdr->eth));
+	ret = net_pkt_read(pkt, hdr, sizeof(*hdr));
 	if (ret) {
 		NET_ERR("Error reading Ethernet header: %d", -ret);
 		return ret;
 	}
 
-	eth_type = hdr->eth.type;
-
-	/* 802.1Q? */
-	if (eth_type == NET_ETH_PTYPE_VLAN) {
-		if (pkt_len < sizeof(hdr->vlan)) {
-			NET_DBG("Dropping VLAN packet, too small");
-			return -ENODATA;
-		}
-
-		ret = net_pkt_read(pkt, (uint8_t *)hdr + sizeof(hdr->eth),
-				sizeof(*hdr) - sizeof(hdr->eth));
-		if (ret) {
-			NET_ERR("Error reading VLAN tpid/tci: %d", -ret);
-			return ret;
-		}
-
-		vid = net_eth_vlan_get_vid(hdr->vlan.vlan.tci);
-		if (unlikely(node->ctrl_vid != vid)) {
-			NET_DBG("Frame not in the control VLAN 0x%x", (unsigned int)vid);
-			return -EINVAL;
-		}
-
-		eth_type = hdr->vlan.type;
+	if (hdr->vlan.tpid != NET_ETH_PTYPE_VLAN) {
+		return -EINVAL;
 	}
 
-	return (int)eth_type;
+	vid = net_eth_vlan_get_vid(hdr->vlan.tci);
+	if (vid != node->ctrl_vid) {
+		NET_DBG("Frame not in the control VLAN 0x%x", (unsigned int)vid);
+		return -EINVAL;
+	}
+
+	return hdr->type;
 }
 
 static bool erps_is_local_raps_frame(struct erps_link *lnk,
-					const union erps_eth_hdr *hdr)
+					const struct net_eth_vlan_hdr *hdr)
 {
 	int ret;
 	struct net_eth_addr mac;
@@ -577,7 +557,7 @@ static bool erps_is_local_raps_frame(struct erps_link *lnk,
 		return false;
 	}
 
-	return !memcmp(&mac, &hdr->eth.dst, sizeof(mac));
+	return !memcmp(&mac, &hdr->dst, sizeof(mac));
 }
 
 void erps_fsm_transition(struct erps_node *node, enum erps_node_state next)
@@ -966,11 +946,11 @@ static enum net_verdict erps_eth_recv(struct erps_link *lnk,
 	size_t psize;
 	int ret, eth_type;
 	struct raps_pdu pdu;
-	union erps_eth_hdr hdr;
+	struct net_eth_vlan_hdr hdr;
 
 	psize = net_pkt_remaining_data(pkt);
 
-	eth_type = erps_read_eth_hdr(lnk, pkt, &hdr);
+	eth_type = erps_read_vlan_hdr(lnk, pkt, &hdr);
 	if (unlikely(eth_type < 0)) {
 		return NET_DROP;
 	}
