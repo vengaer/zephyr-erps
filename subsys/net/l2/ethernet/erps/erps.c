@@ -16,6 +16,7 @@
 #include <zephyr/net/ethernet.h>
 #include <zephyr/net/ethernet_vlan.h>
 #include <zephyr/net/net_log.h>
+#include <zephyr/net/net_ip.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/atomic.h>
@@ -638,7 +639,8 @@ static int erps_fsm_post_locked(struct erps_link *lnk, enum erps_request req,
 	int ret;
 	struct erps_node *node = erps_link_get_node(lnk);
 
-	NET_DBG("Incoming request '%s'", erps_request_name(req));
+	NET_DBG("FSM request '%s' on interface %d", erps_request_name(req),
+			net_if_get_by_iface(net_if_lookup_by_dev(lnk->dev)));
 
 	ret = erps_fsm_resolve_req_prio(node, req);
 	if (ret == -EBUSY) {
