@@ -573,6 +573,11 @@ static int erps_fsm_resolve_req_prio(struct erps_node *node, enum erps_request r
 		return -EBUSY;
 	}
 
+	/* Allow CLEAR_SF if SF is active */
+	if (req == ERPS_REQ_CLEAR_SF && node->local_topreq == ERPS_REQ_SF) {
+		node->local_topreq = ERPS_REQ_INVALID;
+	}
+
 	/* Update local top priority request on higher priority request (10.1.9) */
 	if (req <= node->local_topreq) {
 		switch (req) {
