@@ -510,43 +510,8 @@ bool erps_node_is_revertive(const struct erps_node *node)
 	return node->revertive;
 }
 
-static int erps_read_vlan_hdr(struct erps_link *lnk, struct net_pkt *pkt,
-						struct net_eth_vlan_hdr *hdr)
-{
-	int ret;
-	size_t pkt_len;
-	uint16_t vid;
-	const struct erps_node *node = erps_link_get_node(lnk);
-
-	pkt_len = net_pkt_get_len(pkt);
-
-	if (unlikely(pkt_len < sizeof(*hdr))) {
-		NET_DBG("Packet does not contain a complete Ethernet header");
-		return -ENODATA;
-	}
-
-	net_pkt_cursor_init(pkt);
-	ret = net_pkt_read(pkt, hdr, sizeof(*hdr));
-	if (ret) {
-		NET_ERR("Error reading Ethernet header: %d", -ret);
-		return ret;
-	}
-
-	if (hdr->vlan.tpid != NET_ETH_PTYPE_VLAN) {
-		return -EINVAL;
-	}
-
-	vid = net_eth_vlan_get_vid(hdr->vlan.tci);
-	if (vid != node->ctrl_vid) {
-		NET_DBG("Frame not in the control VLAN 0x%x", (unsigned int)vid);
-		return -EINVAL;
-	}
-
-	return hdr->type;
-}
-
 static bool erps_is_local_raps_frame(struct erps_link *lnk,
-					const struct net_eth_vlan_hdr *hdr)
+					const struct raps_pdu *pdu)
 {
 	int ret;
 	struct net_eth_addr mac;
@@ -558,7 +523,7 @@ static bool erps_is_local_raps_frame(struct erps_link *lnk,
 		return false;
 	}
 
-	return !memcmp(&mac, &hdr->dst, sizeof(mac));
+	return !memcmp(&mac, &pdu->raps_info.node_id, sizeof(mac));
 }
 
 void erps_fsm_transition(struct erps_node *node, enum erps_node_state next)
@@ -942,35 +907,73 @@ static enum net_verdict erps_raps_recv(struct erps_link *lnk, struct net_if *ifa
 	return ret ? NET_DROP : NET_OK;
 }
 
+static int erps_read_vlan_hdr(struct erps_link *lnk, struct net_pkt *pkt,
+						struct net_eth_vlan_hdr *hdr)
+{
+	int ret;
+	uint16_t vid, tpid, type;
+	struct erps_node *node = erps_link_get_node(lnk);
+
+	if (unlikely(net_pkt_remaining_data(pkt) < sizeof(*hdr))) {
+		return -ENODATA;
+	}
+
+	ret = net_pkt_read(pkt, hdr, sizeof(*hdr));
+	if (ret) {
+		return ret;
+	}
+
+	tpid = net_ntohs(hdr->vlan.tpid);
+	if (unlikely(tpid != NET_ETH_PTYPE_VLAN)) {
+		NET_DBG("Not a VLAN frame, protocol type 0x%x", (unsigned int)tpid);
+		return -EINVAL;
+	}
+
+	vid = net_eth_vlan_get_vid(net_ntohs(hdr->vlan.tci));
+	if (vid != node->ctrl_vid) {
+		NET_DBG("Unexpected VLAN. Got 0x%x, expected 0x%x", (unsigned int)vid,
+				(unsigned int)node->ctrl_vid);
+		return -EINVAL;
+	}
+
+	type = net_ntohs(hdr->type);
+	if (unlikely(type != NET_ETH_PTYPE_OAM)) {
+		NET_DBG("Not an OAM frame, type 0x%x", (unsigned int)type);
+	}
+
+	return 0;
+}
+
 static enum net_verdict erps_eth_recv(struct erps_link *lnk,
 				struct net_if *iface, struct net_pkt *pkt)
 {
+	int ret;
 	size_t psize;
-	int ret, eth_type;
 	struct raps_pdu pdu;
 	struct net_eth_vlan_hdr hdr;
 
 	psize = net_pkt_remaining_data(pkt);
 
-	eth_type = erps_read_vlan_hdr(lnk, pkt, &hdr);
-	if (unlikely(eth_type < 0)) {
+	NET_DBG("Incoming frame on interface %d", net_if_get_by_iface(iface));
+
+	ret = erps_read_vlan_hdr(lnk, pkt, &hdr);
+	if (ret) {
+		NET_DBG("Drop: Invalid VLAN header (%d)", ret);
 		return NET_DROP;
 	}
 
-	LOG_HEXDUMP_DBG((void *)&hdr, psize - net_pkt_remaining_data(pkt),
-		"Ethernet header: ");
-
-	if (unlikely(eth_type != NET_ETH_PTYPE_OAM)) {
-		return NET_DROP;
-	}
-
-	if (unlikely(erps_is_local_raps_frame(lnk, &hdr))) {
-		return NET_DROP;
-	}
+	LOG_HEXDUMP_DBG(&hdr, sizeof(hdr), "VLAN header: ");
 
 	ret = net_pkt_read(pkt, &pdu, sizeof(pdu));
 	if (unlikely(ret)) {
 		NET_ERR("Error reading R-APS PDU: %d", -ret);
+		return NET_DROP;
+	}
+
+	LOG_HEXDUMP_DBG(&pdu, sizeof(pdu), "R-APS PDU: ");
+
+	if (unlikely(erps_is_local_raps_frame(lnk, &pdu))) {
+		NET_DBG("Drop: local R-APS frame");
 		return NET_DROP;
 	}
 
@@ -1358,7 +1361,6 @@ static int erps_link_configure_vlan(struct erps_link *lnk)
 				-ret);
 		break;
 	}
-
 
 	ret = net_eth_vlan_enable(iface, node->ctrl_vid);
 	if (ret) {
