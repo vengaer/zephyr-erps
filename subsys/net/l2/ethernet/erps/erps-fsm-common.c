@@ -13,7 +13,7 @@
 #include "erps-fsm.h"
 #include "erps-internal.h"
 
-LOG_MODULE_REGISTER(erps_fsm_common, CONFIG_ERPS_LOG_LEVEL);
+LOG_MODULE_REGISTER(erps_fsm_common, CONFIG_NET_ERPS_LOG_LEVEL);
 
 int erps_fsm_fs_common(struct erps_link *lnk);
 int erps_fsm_sf_common(struct erps_link *lnk);

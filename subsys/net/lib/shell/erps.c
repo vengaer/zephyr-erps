@@ -13,7 +13,7 @@
 #include <zephyr/net/net_if.h>
 #include <zephyr/shell/shell.h>
 
-LOG_MODULE_REGISTER(erps_sh, CONFIG_ERPS_LOG_LEVEL);
+LOG_MODULE_REGISTER(erps_sh, CONFIG_NET_ERPS_LOG_LEVEL);
 
 static int erps_sh_parse_u8(const char *str)
 {

@@ -12,7 +12,7 @@
 #include "erps-fsm.h"
 #include "erps-internal.h"
 
-LOG_MODULE_REGISTER(erps_fsm_protection, CONFIG_ERPS_LOG_LEVEL);
+LOG_MODULE_REGISTER(erps_fsm_protection, CONFIG_NET_ERPS_LOG_LEVEL);
 
 static inline int erps_fsm_fs_protection(struct erps_link *lnk)
 {

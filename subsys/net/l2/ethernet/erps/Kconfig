@@ -4,7 +4,7 @@
 
 menu "Ethernet Ring Protection Switching"
 
-config ERPS
+config NET_ERPS
 	bool "Ethernet ring protection switching"
 	default y
 	depends on DT_HAS_ITU_T_ERPS_NODE_ENABLED && NETWORKING
@@ -15,22 +15,22 @@ config ERPS
 	  for Ethernet rings while ensuring there are no loops in the
 	  network. Select y to enable this feature.
 
-if ERPS
+if NET_ERPS
 
-config ERPS_INIT_PRIORITY
+config NET_ERPS_INIT_PRIORITY
 	int "ERPS initialization priority"
 	default 91
 	help
 	  ERPS link initialization priority.
 
-config ERPS_SHELL
+config NET_ERPS_SHELL
 	bool "ERPS administration from the shell"
 	select NET_SHELL
 	select SHELL_HELP
 	help
 	  Set to gain access to the erps shell subcommands.
 
-config ERPS_PAD_RAPS_PDUS
+config NET_ERPS_PAD_RAPS_PDUS
 	bool "Pad R-APS PDUs"
 	default y
 	help
@@ -44,7 +44,7 @@ config ERPS_PAD_RAPS_PDUS
 	  Say n only if your MAC is configured to to pad runt frames.
 
 
-module = ERPS
+module = NET_ERPS
 module-str = erps
 source "subsys/logging/Kconfig.template.log_config"
 

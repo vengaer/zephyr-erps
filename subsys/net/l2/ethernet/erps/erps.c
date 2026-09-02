@@ -36,7 +36,7 @@
 #define ERPS_MCAST_MAC								\
 	(struct net_eth_addr) { .addr = { 0x01, 0x19, 0xa7, 0x00, 0x00, 0x01 }, }
 
-LOG_MODULE_REGISTER(erps, CONFIG_ERPS_LOG_LEVEL);
+LOG_MODULE_REGISTER(erps, CONFIG_NET_ERPS_LOG_LEVEL);
 
 enum {
 	/* Minimum ring id */
@@ -1036,7 +1036,7 @@ static int erps_raps_create(struct erps_link *lnk, struct net_pkt *pkt)
 		return -ENOBUFS;
 	}
 
-	if (IS_ENABLED(CONFIG_ERPS_PAD_RAPS_PDUS)) {
+	if (IS_ENABLED(CONFIG_NET_ERPS_PAD_RAPS_PDUS)) {
 		struct net_eth_vlan_hdr *hdr;
 		uint8_t pad[NET_ETH_MINIMAL_FRAME_SIZE - sizeof(*hdr) - sizeof(*pdu)] = { 0 };
 
@@ -1058,7 +1058,7 @@ static int erps_link_send_pdu(struct erps_link *lnk, struct net_if *iface)
 
 	frame_size = sizeof(struct raps_pdu);
 
-	if (IS_ENABLED(CONFIG_ERPS_PAD_RAPS_PDUS)) {
+	if (IS_ENABLED(CONFIG_NET_ERPS_PAD_RAPS_PDUS)) {
 		BUILD_ASSERT(sizeof(struct raps_pdu) < NET_ETH_MINIMAL_FRAME_SIZE);
 		frame_size = NET_ETH_MINIMAL_FRAME_SIZE;
 	}
@@ -1517,7 +1517,7 @@ static int erps_init(void)
 	return 0;
 }
 
-BUILD_ASSERT(CONFIG_ERPS_INIT_PRIORITY > CONFIG_NET_INIT_PRIO);
-SYS_INIT(erps_init, POST_KERNEL, CONFIG_ERPS_INIT_PRIORITY);
+BUILD_ASSERT(CONFIG_NET_ERPS_INIT_PRIORITY > CONFIG_NET_INIT_PRIO);
+SYS_INIT(erps_init, POST_KERNEL, CONFIG_NET_ERPS_INIT_PRIORITY);
 
 ETH_NET_L3_REGISTER(ERPS, NET_ETH_PTYPE_OAM, erps_recv);

@@ -12,7 +12,7 @@
 #include "erps-fsm.h"
 #include "erps-internal.h"
 
-LOG_MODULE_REGISTER(erps_fsm_pending, CONFIG_ERPS_LOG_LEVEL);
+LOG_MODULE_REGISTER(erps_fsm_pending, CONFIG_NET_ERPS_LOG_LEVEL);
 
 static int erps_fsm_clear_pending(struct erps_link *lnk)
 {

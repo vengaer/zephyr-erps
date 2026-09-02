@@ -12,7 +12,7 @@
 #include "erps-fsm.h"
 #include "erps-internal.h"
 
-LOG_MODULE_REGISTER(erps_fsm_ms, CONFIG_ERPS_LOG_LEVEL);
+LOG_MODULE_REGISTER(erps_fsm_ms, CONFIG_NET_ERPS_LOG_LEVEL);
 
 static inline int erps_fsm_clear_ms(struct erps_link *lnk)
 {
