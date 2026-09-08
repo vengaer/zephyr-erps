@@ -623,6 +623,7 @@ static int erps_fsm_post_locked(struct erps_link *lnk, enum erps_request req,
 		return 0;
 	}
 
+	NET_DBG("State is [%s]", erps_state_name(node->state));
 	switch (node->state) {
 	case ERPS_STATE_IDLE:		/* Table 10-2, rows 2-15 */
 		ret = erps_fsm_post_idle(lnk, req, pdu);
