@@ -373,6 +373,7 @@ int erps_link_unblock(struct erps_link *lnk)
 	struct erps_node *node;
 	struct net_if *iface, *vlan_iface;
 
+	lnk->failed = false;
 	if (!lnk->blocked) {
 		return 0;
 	}
@@ -488,16 +489,6 @@ int erps_node_sched_tx(struct erps_node *node, uint8_t req_state,
 	);
 
 	return ret < 0 ? ret : 0;
-}
-
-void erps_link_set_failed(struct erps_link *lnk)
-{
-	lnk->failed = true;
-}
-
-void erps_link_clear_failed(struct erps_link *lnk)
-{
-	lnk->failed = false;
 }
 
 bool erps_node_is_rpl_owner(const struct erps_node *node)
@@ -621,6 +612,11 @@ static int erps_fsm_post_locked(struct erps_link *lnk, enum erps_request req,
 	if (ret == -EBUSY) {
 		NET_DBG("Request '%s' ignored by priority logic", erps_request_name(req));
 		return 0;
+	}
+
+	if (req == ERPS_REQ_SF) {
+		NET_DBG("Marking link as failed");
+		lnk->failed = true;
 	}
 
 	NET_DBG("State is [%s]", erps_state_name(node->state));

@@ -162,20 +162,6 @@ void erps_node_stop_tx(struct erps_node *node);
 int erps_flush_fdb(struct erps_link *lnk);
 
 /*
- * Mark provided link as failed
- *
- * param lnk: The failed link
- */
-void erps_link_set_failed(struct erps_link *lnk);
-
-/*
- * Mark provided link as restored
- *
- * param lnk: The restored link
- */
-void erps_link_clear_failed(struct erps_link *lnk);
-
-/*
  * Determine whether or not provided node is the RPL owner
  *
  * param node: The node to check
