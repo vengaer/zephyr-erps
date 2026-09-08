@@ -354,7 +354,7 @@ int erps_link_block(struct erps_link *lnk)
 	erps_link_delete_node_id_bpr(lnk);
 	erps_link_delete_node_id_bpr(oth_lnk);
 
-	vlan_iface = net_eth_get_vlan_iface(iface, node->ctrl_vid);
+	vlan_iface = net_eth_get_vlan_iface(iface, node->traffic_vid);
 	if (!vlan_iface) {
 		NET_ERR("Could not get VLAN interface");
 		return -ENODEV;
@@ -390,7 +390,7 @@ int erps_link_unblock(struct erps_link *lnk)
 	lnk->blocked = false;
 	node = erps_link_get_node(lnk);
 
-	vlan_iface = net_eth_get_vlan_iface(iface, node->ctrl_vid);
+	vlan_iface = net_eth_get_vlan_iface(iface, node->traffic_vid);
 
 	if (!vlan_iface) {
 		NET_ERR("Could not get VLAN interface");
