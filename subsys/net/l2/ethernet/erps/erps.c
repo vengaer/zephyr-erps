@@ -1025,10 +1025,16 @@ static enum net_verdict erps_recv(struct net_if *iface, uint16_t ptype,
 	else {
 		NET_DBG("R-APS packet too small. Expected %zu, have %zu",
 			sizeof(struct raps_pdu), net_pkt_get_len(pkt));
-		vdct = NET_DROP;
+		vdct = NET_CONTINUE;
 	}
 
-	net_pkt_cursor_restore(pkt, &backup);
+	if (vdct == NET_OK) {
+		net_pkt_unref(pkt);
+	}
+	else {
+		net_pkt_cursor_restore(pkt, &backup);
+	}
+
 	return vdct;
 }
 
