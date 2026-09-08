@@ -1106,24 +1106,21 @@ static int erps_link_send_pdu(struct erps_link *lnk, struct net_if *iface)
 
 	net_pkt_set_ll_proto_type(pkt, NET_ETH_PTYPE_OAM);
 	ret = net_linkaddr_copy(net_pkt_lladdr_src(pkt), net_if_get_link_addr(iface));
-	if (ret) {
-		return ret;
+
+	if (!ret) {
+		erps_node_dst_mac(node, &mac);
+		ret = net_linkaddr_set(net_pkt_lladdr_dst(pkt), mac.addr, sizeof(mac));
 	}
 
-	erps_node_dst_mac(node, &mac);
-	ret = net_linkaddr_set(net_pkt_lladdr_dst(pkt), mac.addr, sizeof(mac));
-	if (ret) {
-		return ret;
+	if (!ret) {
+		ret = erps_raps_create(lnk, pkt);
 	}
 
-	ret = erps_raps_create(lnk, pkt);
-	if (ret) {
-		return ret;
-	}
-
-	vdct = net_if_try_send_data(iface, pkt, K_NO_WAIT);
-	if (vdct == NET_DROP) {
-		ret = -EIO;
+	if (!ret) {
+		vdct = net_if_try_send_data(iface, pkt, K_NO_WAIT);
+		if (vdct == NET_DROP) {
+			ret = -EIO;
+		}
 	}
 
 	if (ret) {
