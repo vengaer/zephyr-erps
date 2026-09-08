@@ -62,7 +62,17 @@ int net_erps_ctl(struct net_if *iface, enum erps_event ev);
  * @retval >0   Address of the interface corresponding to the ring port
  * @retval NULL No ring matches @p ring_id, or @p port is invalid
  */
+#if defined(CONFIG_NET_ERPS_SHELL) || __DOXYGEN__
 struct net_if *net_erps_lookup_iface(uint8_t ring_id, uint8_t port);
+#else
+static inline net_if *net_erps_lookup_iface(uint8_t ring_id, uint8_t port)
+{
+	ARG_UNUSED(ring_id);
+	ARG_UNUSED(port);
+
+	return NULL;
+}
+#endif
 
 /** @} */
 
