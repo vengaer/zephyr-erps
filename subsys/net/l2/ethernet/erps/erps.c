@@ -13,6 +13,7 @@
 #include <zephyr/device.h>
 #include <zephyr/devicetree.h>
 #include <zephyr/net/dsa_core.h>
+#include <zephyr/net/erps.h>
 #include <zephyr/net/ethernet.h>
 #include <zephyr/net/ethernet_vlan.h>
 #include <zephyr/net/net_log.h>
@@ -1262,6 +1263,31 @@ struct net_if *net_erps_lookup_iface(uint8_t ring_id, uint8_t port)
 	return NULL;
 }
 #endif /* CONFIG_ERPS_SHELL */
+
+int net_erps_ring_info_by_iface(struct net_if *iface, struct erps_ring_info *info)
+{
+	struct device const *dev = net_if_get_device(iface);
+
+	if (!dev) {
+		return -ENODEV;
+	}
+
+	STRUCT_SECTION_FOREACH(erps_node, node) {
+		for (unsigned int i = 0u; i < ARRAY_SIZE(node->ports); ++i) {
+			if (node->ports[i].dev != dev) {
+				continue;
+			}
+
+			info->ring_id = node->ring_id;
+			info->ctrl_vid = node->ctrl_vid;
+			info->traffic_vid = node->traffic_vid;
+
+			return 0;
+		}
+	}
+
+	return -EINVAL;
+}
 
 static int erps_fsm_init(struct erps_node *node)
 {

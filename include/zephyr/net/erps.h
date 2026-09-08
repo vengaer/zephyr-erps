@@ -22,6 +22,18 @@
 
 struct net_if;
 
+/** Ring information */
+struct erps_ring_info {
+	/** Ring identifier */
+	uint8_t ring_id;
+
+	/** Control VLAN identifier */
+	uint16_t ctrl_vid;
+
+	/** Traffic VLAN identifier */
+	uint16_t traffic_vid;
+};
+
 /** External events. Not to be confused with the R-APS events */
 enum erps_event {
 	/** Physical link/node failure */
@@ -73,6 +85,19 @@ static inline net_if *net_erps_lookup_iface(uint8_t ring_id, uint8_t port)
 	return NULL;
 }
 #endif
+
+/**
+ * @brief Look up information about the ring containing @p iface
+ *
+ * @param iface Network interface
+ * @param info  Ring information struct to fill in
+ *
+ * @retval 0       @p info populated
+ * @retval -EINVAL @p iface is not a ring link
+ * @retval -ENODEV Could not get device associated with @p iface
+ */
+int net_erps_ring_info_by_iface(struct net_if *iface, struct erps_ring_info *info);
+
 
 /** @} */
 
