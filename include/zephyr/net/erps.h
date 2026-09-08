@@ -12,6 +12,7 @@
 #ifndef ZEPHYR_INCLUDE_NET_ERPS_H_
 #define ZEPHYR_INCLUDE_NET_ERPS_H_
 
+#include <stdbool.h>
 #include <stdint.h>
 
 /**
@@ -27,11 +28,17 @@ struct erps_ring_info {
 	/** Ring identifier */
 	uint8_t ring_id;
 
+	/** Whether or not reversion is in progress */
+	bool reverting;
+
 	/** Control VLAN identifier */
 	uint16_t ctrl_vid;
 
 	/** Traffic VLAN identifier */
 	uint16_t traffic_vid;
+
+	/** RPL interface. Set to @c NULL if node is neither RPL owner or RPL neighbor */
+	struct net_if *iface_rpl;
 };
 
 /** External events. Not to be confused with the R-APS events */

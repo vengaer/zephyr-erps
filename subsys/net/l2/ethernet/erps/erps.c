@@ -1277,6 +1277,7 @@ struct net_if *net_erps_lookup_iface(uint8_t ring_id, uint8_t port)
 
 int net_erps_ring_info_by_iface(struct net_if *iface, struct erps_ring_info *info)
 {
+	struct erps_link *rpl;
 	struct device const *dev = net_if_get_device(iface);
 
 	if (!dev) {
@@ -1290,8 +1291,17 @@ int net_erps_ring_info_by_iface(struct net_if *iface, struct erps_ring_info *inf
 			}
 
 			info->ring_id = node->ring_id;
+			info->reverting = k_work_delayable_is_pending(&node->wtr_dwork);
 			info->ctrl_vid = node->ctrl_vid;
 			info->traffic_vid = node->traffic_vid;
+
+			rpl = erps_node_get_rpl(node);
+			if (rpl) {
+				info->iface_rpl = net_if_lookup_by_dev(rpl->dev);
+			}
+			else {
+				info->iface_rpl = NULL;
+			}
 
 			return 0;
 		}
