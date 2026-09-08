@@ -823,10 +823,13 @@ static int erps_raps_node_id_bpr_flush(struct erps_link *lnk, enum erps_request 
 	return ret;
 }
 
-static inline bool erps_is_stray_raps_pdu(const struct erps_node *node, const struct raps_pdu *pdu)
+static inline bool erps_is_stray_raps_pdu(const struct erps_node *node,
+					  const struct net_eth_vlan_hdr *hdr)
 {
+	const struct net_eth_addr *dst = &hdr->dst;
+
 	/* Section 10.1.6, last paragraph */
-	return node->ring_id != raps_pdu_get_ring_id(pdu);
+	return node->ring_id != dst->addr[sizeof(dst->addr) - 1u];
 
 }
 
@@ -871,10 +874,6 @@ static enum net_verdict erps_raps_recv(struct erps_link *lnk, struct net_if *ifa
 	if (unlikely(pdu->cfm_hdr.opcode != RAPS_OPCODE)) {
 		NET_DBG("Discarding CFM frame, wrong opcode 0x%02x",
 			(unsigned int)pdu->cfm_hdr.opcode);
-		return NET_DROP;
-	}
-
-	if (unlikely(erps_is_stray_raps_pdu(node, pdu))) {
 		return NET_DROP;
 	}
 
@@ -969,6 +968,7 @@ static enum net_verdict erps_eth_recv(struct erps_link *lnk,
 	size_t psize;
 	struct raps_pdu pdu;
 	struct net_eth_vlan_hdr hdr;
+	struct erps_node *node = erps_link_get_node(lnk);
 
 	psize = net_pkt_remaining_data(pkt);
 
@@ -977,6 +977,11 @@ static enum net_verdict erps_eth_recv(struct erps_link *lnk,
 	ret = erps_read_vlan_hdr(lnk, pkt, &hdr);
 	if (ret) {
 		NET_DBG("Drop: Invalid VLAN header (%d)", ret);
+		return NET_DROP;
+	}
+
+	if (unlikely(erps_is_stray_raps_pdu(node, &hdr))) {
+		NET_DBG("Stray PDU");
 		return NET_DROP;
 	}
 
