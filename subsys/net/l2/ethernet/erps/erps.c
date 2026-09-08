@@ -649,6 +649,14 @@ static inline int erps_fsm_post(struct erps_link *lnk, enum erps_request req,
 	int ret;
 	struct erps_node *node = erps_link_get_node(lnk);
 
+	/* The network stack posts an SF whenever an interface is brought down.
+	 * This includes when ports are blocked.
+	 */
+	if (lnk->blocked && req == ERPS_REQ_SF) {
+		NET_DBG("Ignoring SF on blocked port");
+		return 0;
+	}
+
 	ret = k_mutex_lock(&node->fsm_mutex, K_MSEC(250));
 	if (ret) {
 		NET_ERR("Could not lock ERPS FSM mutex: %d", -ret);
