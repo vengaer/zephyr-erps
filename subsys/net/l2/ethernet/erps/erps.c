@@ -131,6 +131,9 @@ struct erps_node {
 	/* Control VLAN identifier */
 	const uint16_t ctrl_vid;
 
+	/* Traffic VLAN identifier */
+	const uint16_t traffic_vid;
+
 	/* net_pkt allocation timeout */
 	const uint32_t net_pkt_alloc_timeout;
 
@@ -1387,6 +1390,12 @@ static int erps_link_configure_vlan(struct erps_link *lnk)
 		return ret;
 	}
 
+	ret = net_eth_vlan_enable(iface, node->traffic_vid);
+	if (ret) {
+		NET_ERR("Error enabling VLAN 0x%x: %d", (unsigned int)node->traffic_vid, -ret);
+		return ret;
+	}
+
 	vlan_iface = net_eth_get_vlan_iface(iface, node->ctrl_vid);
 	if (!vlan_iface) {
 		return -ENODEV;
@@ -1514,6 +1523,7 @@ static int erps_node_init(struct erps_node *node)
 			n, itu_t_guard_timer_duration                                          \
 		),                                                                             \
 		.ctrl_vid = DT_INST_PROP(n, itu_t_control_vlan_identifier),                    \
+		.traffic_vid = DT_INST_PROP(n, itu_t_traffic_vlan_identifier),                 \
 		.net_pkt_alloc_timeout = DT_INST_PROP(                                         \
 			n, itu_t_net_pkt_alloc_timeout                                         \
 		),                                                                             \

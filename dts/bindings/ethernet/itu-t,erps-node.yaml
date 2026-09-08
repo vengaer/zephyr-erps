@@ -66,7 +66,13 @@ properties:
     type: int
     default: 4093
     description: |
-      Identifier used for the control VLAN
+      Identifier used for the control VLAN.
+
+  itu-t,traffic-vlan-identifier:
+    type: int
+    default: 4092
+    description: |
+      Identifier used for the traffic VLAN.
 
   itu-t,net-pkt-alloc-timeout:
     type: int
