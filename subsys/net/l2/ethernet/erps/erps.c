@@ -263,7 +263,8 @@ int erps_flush_fdb(struct erps_link *lnk)
 		return -ENODEV;
 	}
 
-	return net_eth_mac_flush(iface, ETHERNET_FILTER_TYPE_DST_MAC_ADDRESS);
+	return net_eth_mac_flush(iface, ETHERNET_FILTER_TYPE_DST_MAC_ADDRESS,
+							ETHERNET_MAC_TABLE_DYNAMIC);
 }
 
 int erps_link_get_node_id(struct erps_link *lnk, struct net_eth_addr *mac)
