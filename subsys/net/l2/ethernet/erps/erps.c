@@ -1135,11 +1135,6 @@ static void erps_node_tx_single_pdu(struct erps_node *node)
 			continue;
 		}
 
-		if (lnk->blocked) {
-			NET_DBG("Skipping blocked interface %d", net_if_get_by_iface(iface));
-			continue;
-		}
-
 		if (!net_if_is_up(iface)) {
 			NET_DBG("Interface %d is down (%sRPL)", net_if_get_by_iface(iface),
 									lnk->rpl ? "" : "not ");
