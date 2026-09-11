@@ -1329,6 +1329,12 @@ int net_erps_ring_info_by_iface(struct net_if *iface, struct erps_ring_info *inf
 	return -EINVAL;
 }
 
+void net_erps_ring_mcast_addr(unsigned int ring_id, struct net_eth_addr *mac)
+{
+	memcpy(mac, &ERPS_MCAST_MAC, sizeof(*mac) - 1u);
+	mac->addr[sizeof(mac->addr) - 1u] = (uint8_t)ring_id;
+}
+
 static int erps_fsm_init(struct erps_node *node)
 {
 	int ret;

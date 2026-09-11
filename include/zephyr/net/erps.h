@@ -22,6 +22,7 @@
  */
 
 struct net_if;
+struct net_eth_addr;
 
 /** Ring information */
 struct erps_ring_info {
@@ -116,6 +117,14 @@ static inline net_if *net_erps_lookup_iface(uint8_t ring_id, uint8_t port)
  * @retval -ENODEV Could not get device associated with @p iface
  */
 int net_erps_ring_info_by_iface(struct net_if *iface, struct erps_ring_info *info);
+
+/**
+ * @brief Write ERPS multicast address to @p mac
+ *
+ * @param ring_id Ring identifier obtained via net_erps_ring_info_by_iface()
+ * @param mac     The address to store the multicast address in
+ */
+void net_erps_ring_mcast_addr(unsigned int ring_id, struct net_eth_addr *mac);
 
 
 /** @} */
