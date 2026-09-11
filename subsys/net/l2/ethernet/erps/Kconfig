@@ -43,6 +43,17 @@ config NET_ERPS_PAD_RAPS_PDUS
 
 	  Say n only if your MAC is configured to to pad runt frames.
 
+config NET_ERPS_LINK_FAIL_TIMEOUT
+	int "Number of milliseconds to wait before assuming a link is severed at startup"
+	default 10000
+	help
+	  Since a severed link will not generate a carrier down event, the ERPS implementation
+	  uses a timer started at boot to determine whether or not a link disrupted. This option
+	  determines the timeout of said timer.
+
+	  Reducing the value of this option results in the ring detecting links that are alread
+	  broken at startup at a faster rate. Reducing it too much will cause the ERPS core to
+	  mistake links as severed at startup.
 
 module = NET_ERPS
 module-str = erps

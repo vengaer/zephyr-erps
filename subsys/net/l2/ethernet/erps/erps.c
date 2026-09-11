@@ -90,6 +90,9 @@ struct erps_link {
 	/* Node if of received PDU, first half part of (node ID BPR) pair, Section 10.1.10 */
 	struct net_eth_addr last_node_id;
 
+	/* Startup link detect timer */
+	struct k_work_delayable link_down_dwork;
+
 	/* Device for the port/MAC node */
 	const struct device *dev;
 };
@@ -618,6 +621,12 @@ static int erps_fsm_post_locked(struct erps_link *lnk, enum erps_request req,
 
 	NET_DBG("FSM request '%s' on interface %d", erps_request_name(req),
 			net_if_get_by_iface(net_if_lookup_by_dev(lnk->dev)));
+
+	/* A local clear SF means carrier is on */
+	if (req == ERPS_REQ_CLEAR_SF) {
+		NET_DBG("Canceling link down timer");
+		k_work_cancel_delayable(&lnk->link_down_dwork);
+	}
 
 	ret = erps_fsm_resolve_req_prio(node, req);
 	if (ret == -EBUSY) {
@@ -1327,6 +1336,28 @@ int net_erps_ring_info_by_iface(struct net_if *iface, struct erps_ring_info *inf
 	return -EINVAL;
 }
 
+static void erps_link_down_work(struct k_work *work)
+{
+	int ret;
+	struct net_if *iface;
+	struct k_work_delayable *dwork = k_work_delayable_from_work(work);
+	struct erps_link *lnk = CONTAINER_OF(dwork, struct erps_link, link_down_dwork);
+
+	iface = net_if_lookup_by_dev(lnk->dev);
+	if (!iface) {
+		LOG_ERR("Could not look up device");
+		return;
+	}
+
+	LOG_INF("Interface %d not up in time, assuming link is severed",
+			net_if_get_by_iface(iface));
+
+	ret = erps_fsm_post(lnk, ERPS_REQ_SF, NULL);
+	if (ret) {
+		LOG_ERR("Error posting '%s': %d", erps_request_name(ERPS_REQ_SF), -ret);
+	}
+}
+
 void net_erps_ring_mcast_addr(unsigned int ring_id, struct net_eth_addr *mac)
 {
 	memcpy(mac, &ERPS_MCAST_MAC, sizeof(*mac) - 1u);
@@ -1419,6 +1450,27 @@ static int erps_link_configure_vlan(struct erps_link *lnk)
 	return 0;
 }
 
+static int erps_start_link_down_timer(struct erps_link *lnk)
+{
+	int ret;
+	struct net_if *iface;
+
+	BUILD_ASSERT(CONFIG_NET_ERPS_LINK_FAIL_TIMEOUT > 0);
+
+	k_work_init_delayable(&lnk->link_down_dwork, erps_link_down_work);
+
+	ret = k_work_reschedule(&lnk->link_down_dwork, K_MSEC(CONFIG_NET_ERPS_LINK_FAIL_TIMEOUT));
+	ret = ret < 0 ? ret : 0;
+
+	if (!ret) {
+		iface = net_if_lookup_by_dev(lnk->dev);
+		LOG_DBG("Link down timer started on interface %d, expires in %ums",
+				net_if_get_by_iface(iface), CONFIG_NET_ERPS_LINK_FAIL_TIMEOUT);
+	}
+
+	return ret;
+}
+
 static int erps_node_init(struct erps_node *node)
 {
 	int ret;
@@ -1434,16 +1486,27 @@ static int erps_node_init(struct erps_node *node)
 		LOG_DBG("Interface %d is ring %u link %u, RPL: %s",
 			net_if_get_by_iface(net_if_lookup_by_dev(node->ports[i].dev)),
 			(unsigned int)node->ring_id, i, node->ports[i].rpl ? "yes" : "no");
+
 		ret = erps_link_configure_vlan(&node->ports[i]);
-	}
-	if (!ret) {
-		ret = erps_fsm_init(node);
+		if (ret) {
+			return ret;
+		}
+
+		if (!node->ports[i].rpl) {
+			ret = erps_start_link_down_timer(&node->ports[i]);
+		}
 	}
 
-	if (!ret) {
-		LOG_DBG("Ring %u node initialized", node->ring_id);
+	if (ret) {
+		return ret;
 	}
 
+	ret = erps_fsm_init(node);
+	if (ret) {
+		return ret;
+	}
+
+	LOG_DBG("Ring %u node initialized", node->ring_id);
 	return ret;
 }
 
