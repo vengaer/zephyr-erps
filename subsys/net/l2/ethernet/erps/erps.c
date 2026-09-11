@@ -589,6 +589,8 @@ static int erps_fsm_resolve_req_prio(struct erps_node *node, enum erps_request r
 		case ERPS_REQ_SF:
 		case ERPS_REQ_FS:
 		case ERPS_REQ_MS:
+		case ERPS_REQ_WTR_RUNNING:
+		case ERPS_REQ_WTB_RUNNING:
 			/* Local request is top priority */
 			node->local_topreq = req;
 			break;
