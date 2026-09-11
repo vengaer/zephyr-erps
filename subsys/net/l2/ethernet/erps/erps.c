@@ -1422,21 +1422,6 @@ static int erps_link_configure_vlan(struct erps_link *lnk)
 
 	erps_node_dst_mac(node, &mac);
 
-	ret = net_eth_vlan_mac_filter(iface, &mac, ETHERNET_FILTER_TYPE_DST_MAC_ADDRESS, true,
-					node->ctrl_vid);
-	switch (ret) {
-	case 0:
-		break;
-	case -ENOTSUP:
-		NET_DBG("Interface %d does not support hardware filtering",
-			net_if_get_by_iface(iface));
-		break;
-	default:
-		NET_ERR("Iface %d: Error applying MAC filter: %d", net_if_get_by_iface(iface),
-				-ret);
-		break;
-	}
-
 	ret = net_eth_vlan_enable(iface, node->ctrl_vid);
 	if (ret) {
 		NET_ERR("Error enabling VLAN 0x%x: %d", (unsigned int)node->ctrl_vid, -ret);
