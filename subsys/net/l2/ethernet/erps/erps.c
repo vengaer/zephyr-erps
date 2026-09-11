@@ -667,6 +667,8 @@ static inline int erps_fsm_post(struct erps_link *lnk, enum erps_request req,
 
 	ret = erps_fsm_post_locked(lnk, req, pdu);
 	k_mutex_unlock(&node->fsm_mutex);
+
+	NET_DBG("FSM request processed, status %d", ret);
 	return ret;
 }
 
@@ -748,16 +750,19 @@ int erps_node_start_wtb(struct erps_node *node)
 
 void erps_node_stop_tx(struct erps_node *node)
 {
+	NET_DBG("Stopping TX");
 	k_work_cancel_delayable(&node->tx_dwork);
 }
 
 void erps_node_stop_wtr(struct erps_node *node)
 {
+	NET_DBG("Stop WTR");
 	k_work_cancel_delayable(&node->wtr_dwork);
 }
 
 void erps_node_stop_wtb(struct erps_node *node)
 {
+	NET_DBG("Stop WTB");
 	k_work_cancel_delayable(&node->wtb_dwork);
 }
 
