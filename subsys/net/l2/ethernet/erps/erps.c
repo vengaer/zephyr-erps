@@ -18,6 +18,7 @@
 #include <zephyr/net/ethernet_vlan.h>
 #include <zephyr/net/net_log.h>
 #include <zephyr/net/net_ip.h>
+#include <zephyr/net/net_mgmt.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/atomic.h>
@@ -143,6 +144,9 @@ struct erps_node {
 
 	/* net_pkt allocation timeout */
 	const uint32_t net_pkt_alloc_timeout;
+
+	/* Management callback to track link state */
+	struct net_mgmt_event_callback mgmt_cb;
 
 	/* Values to use in sent PDUs */
 	struct raps_pdu_mut pdu_mut;
@@ -454,6 +458,7 @@ int erps_node_sched_tx(struct erps_node *node, uint8_t req_state,
 {
 	int ret;
 	uint8_t rs_sc, burst;
+	struct net_if *iface;
 	struct erps_link *lnk;
 
 	switch (req_state) {
@@ -505,6 +510,12 @@ int erps_node_sched_tx(struct erps_node *node, uint8_t req_state,
 	ret = 0;
 	for (unsigned int i = 0u; ret >= 0 && i < ARRAY_SIZE(node->ports); ++i) {
 		lnk = &node->ports[i];
+
+		iface = net_if_lookup_by_dev(lnk->dev);
+		if (!net_if_is_up(iface)) {
+			NET_DBG("Deferring TX on interface %d, burst %u", net_if_get_by_iface(iface), (unsigned int)lnk->tx_burst);
+			continue;
+		}
 
 		ret = k_work_reschedule(
 			&lnk->tx_dwork,
@@ -1269,6 +1280,45 @@ static void erps_wtb_work(struct k_work *work)
 	}
 }
 
+static void erps_iface_up_cb(struct net_mgmt_event_callback *cb, uint64_t mgmt_event,
+			     struct net_if *iface)
+{
+	int ret;
+	struct erps_link *lnk;
+	struct erps_node *node;
+	struct net_if *iface0, *iface1;
+
+	if (unlikely(mgmt_event != NET_EVENT_IF_UP)) {
+		return;
+	}
+
+	node = CONTAINER_OF(cb, struct erps_node, mgmt_cb);
+
+	iface0 = net_if_lookup_by_dev(node->ports[0u].dev);
+	iface1 = net_if_lookup_by_dev(node->ports[1u].dev);
+
+	if (iface != iface0 && iface != iface1) {
+		LOG_DBG("Ignoring link up on interface %d, not part of ring %u",
+				net_if_get_by_iface(iface), node->ring_id);
+		return;
+	}
+
+	lnk = &node->ports[iface == iface1];
+
+	NET_DBG("Interface %d is up, scheduling TX (burst %u)", net_if_get_by_iface(iface),
+							       (unsigned int)lnk->tx_burst);
+
+	ret = k_work_reschedule(
+		&lnk->tx_dwork,
+		K_USEC(lnk->tx_burst ?  ERPS_TX_BURST_PERIOD : ERPS_TX_PERIOD)
+	);
+
+	if (ret < 0) {
+		LOG_ERR("Error scheduling TX for interface %d: %d", net_if_get_by_iface(iface),
+								    -ret);
+	}
+}
+
 #if defined(CONFIG_ERPS_SHELL)
 struct net_if *net_erps_lookup_iface(uint8_t ring_id, uint8_t port)
 {
@@ -1527,9 +1577,34 @@ static int erps_start_link_down_timer(struct erps_link *lnk)
 	return ret;
 }
 
+static int erps_link_init(struct erps_link *lnk)
+{
+	int ret;
+	struct erps_node *node = erps_link_get_node(lnk);
+
+	LOG_DBG("Interface %d is ring %u link %u, RPL: %s",
+		net_if_get_by_iface(net_if_lookup_by_dev(lnk->dev)),
+		(unsigned int)node->ring_id, lnk->idx, lnk->rpl ? "yes" : "no");
+
+	k_work_init_delayable(&lnk->tx_dwork, erps_tx_work);
+
+	ret = erps_link_configure_vlan(lnk);
+	if (ret) {
+		return ret;
+	}
+
+	if (!lnk->rpl) {
+		ret = erps_start_link_down_timer(lnk);
+	}
+
+	return ret;
+}
+
 static int erps_node_init(struct erps_node *node)
 {
 	int ret;
+	struct net_if *iface;
+	struct erps_link *lnk;
 
 	k_work_init_delayable(&node->wtr_dwork, erps_wtr_work);
 	k_work_init_delayable(&node->wtb_dwork, erps_wtb_work);
@@ -1537,21 +1612,9 @@ static int erps_node_init(struct erps_node *node)
 	node->local_topreq = ERPS_REQ_INVALID;
 
 	ret = k_mutex_init(&node->fsm_mutex);
+
 	for (unsigned int i = 0u; !ret && i < ARRAY_SIZE(node->ports); ++i) {
-		LOG_DBG("Interface %d is ring %u link %u, RPL: %s",
-			net_if_get_by_iface(net_if_lookup_by_dev(node->ports[i].dev)),
-			(unsigned int)node->ring_id, i, node->ports[i].rpl ? "yes" : "no");
-
-		k_work_init_delayable(&node->ports[i].tx_dwork, erps_tx_work);
-
-		ret = erps_link_configure_vlan(&node->ports[i]);
-		if (ret) {
-			return ret;
-		}
-
-		if (!node->ports[i].rpl) {
-			ret = erps_start_link_down_timer(&node->ports[i]);
-		}
+		ret = erps_link_init(&node->ports[i]);
 	}
 
 	if (ret) {
@@ -1561,6 +1624,30 @@ static int erps_node_init(struct erps_node *node)
 	ret = erps_fsm_init(node);
 	if (ret) {
 		return ret;
+	}
+
+	net_mgmt_init_event_callback(&node->mgmt_cb, erps_iface_up_cb, NET_EVENT_IF_UP);
+	net_mgmt_add_event_callback(&node->mgmt_cb);
+
+	for (unsigned int i = 0u; i < ARRAY_SIZE(node->ports); ++i) {
+		lnk = &node->ports[i];
+		iface = net_if_lookup_by_dev(lnk->dev);
+		if (iface) {
+			return -ENODEV;
+		}
+
+		/* Interface may have gone up before the callback was added */
+		if (net_if_is_up(iface) && !k_work_delayable_is_pending(&lnk->tx_dwork)) {
+			ret = k_work_reschedule(
+				&lnk->tx_dwork,
+				K_USEC(lnk->tx_burst ?  ERPS_TX_BURST_PERIOD : ERPS_TX_PERIOD)
+			);
+
+			if (ret) {
+				LOG_ERR("Could not schedule initial TX for %d",
+						net_if_get_by_iface(iface));
+			}
+		}
 	}
 
 	LOG_DBG("Ring %u node initialized", node->ring_id);
