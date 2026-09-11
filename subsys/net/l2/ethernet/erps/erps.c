@@ -1194,25 +1194,6 @@ static void erps_tx_work(struct k_work *work)
 
 	node = CONTAINER_OF(dwork, struct erps_node, tx_dwork);
 
-	if (!node->tx_burst) {
-		/* The specification mandates that the running signals are generated continuously
-		 * but says nothing about the period. Might as well piggy-back off the TX timer.
-		 */
-		if (k_work_delayable_is_pending(&node->wtr_dwork)) {
-			ret = erps_fsm_post(&node->ports[0u], ERPS_REQ_WTR_RUNNING, NULL);
-			if (ret) {
-				NET_WARN("Error posting WTR Running");
-			}
-		}
-
-		if (k_work_delayable_is_pending(&node->wtb_dwork)) {
-			ret = erps_fsm_post(&node->ports[0u], ERPS_REQ_WTB_RUNNING, NULL);
-			if (ret) {
-				NET_WARN("Error posting WTB running");
-			}
-		}
-	}
-
 	/* Syncronize with TX scheduler */
 	if (IS_ENABLED(CONFIG_MULTITHREADING)) {
 		atomic_thread_fence(memory_order_acquire);
