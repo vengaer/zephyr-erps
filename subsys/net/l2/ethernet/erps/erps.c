@@ -405,6 +405,12 @@ int erps_link_unblock(struct erps_link *lnk)
 	return 0;
 }
 
+static inline int erps_link_unblock_force(struct erps_link *lnk)
+{
+	lnk->blocked = true;
+	return erps_link_unblock(lnk);
+}
+
 int erps_node_unblock_all(struct erps_node *node)
 {
 	int ret;
@@ -1339,7 +1345,7 @@ static int erps_fsm_init(struct erps_node *node)
 
 		ret = erps_link_block(rpl);
 		if (!ret) {
-			ret = erps_link_unblock(non_rpl);
+			ret = erps_link_unblock_force(non_rpl);
 		}
 		if (!ret) {
 			ret = erps_node_sched_tx(node, RAPS_NR, 0u, 0u);
@@ -1351,7 +1357,7 @@ static int erps_fsm_init(struct erps_node *node)
 	else {
 		ret = erps_link_block(&node->ports[0u]);
 		if (!ret) {
-			ret = erps_link_unblock(&node->ports[1u]);
+			ret = erps_link_unblock_force(&node->ports[1u]);
 		}
 		if (!ret) {
 			ret = erps_node_sched_tx(node, RAPS_NR, 0u, 0u);
