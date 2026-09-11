@@ -275,17 +275,20 @@ int erps_link_get_node_id(struct erps_link *lnk, struct net_eth_addr *mac)
 {
 	struct net_if *iface;
 	struct net_linkaddr *link_addr;
+	struct erps_node *node = erps_link_get_node(lnk);
+	struct erps_link *first_lnk = &node->ports[0u];
 
 	BUILD_ASSERT(
 		sizeof(link_addr->addr) >= sizeof(*mac),
 		"Link address struct cannot hold a MAC address"
 	);
 
-	iface = net_if_lookup_by_dev(lnk->dev);
+	iface = net_if_lookup_by_dev(first_lnk->dev);
 	if (unlikely(!iface)) {
 		return -ENODEV;
 	}
 
+	/* Use addres of link 0 as node id */
 	link_addr = net_if_get_link_addr(iface);
 	if (unlikely(!link_addr || link_addr->len != sizeof(*mac))) {
 		return -ENXIO;
