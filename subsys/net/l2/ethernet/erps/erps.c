@@ -1434,12 +1434,22 @@ static int erps_link_configure_vlan(struct erps_link *lnk)
 		return ret;
 	}
 
+	vlan_iface = net_eth_get_vlan_iface(iface, node->traffic_vid);
+	if (vlan_iface) {
+		LOG_DBG("%d is traffic VLAN for interface %d", net_if_get_by_iface(vlan_iface),
+			net_if_get_by_iface(iface));
+	}
+
 	vlan_iface = net_eth_get_vlan_iface(iface, node->ctrl_vid);
 	if (!vlan_iface) {
 		return -ENODEV;
 	}
 
-	NET_DBG("Bringing up iface %d", net_if_get_by_iface(vlan_iface));
+	LOG_DBG("%d is control VLAN for interface %d", net_if_get_by_iface(vlan_iface),
+		net_if_get_by_iface(iface));
+
+
+	LOG_DBG("Bringing up iface %d", net_if_get_by_iface(vlan_iface));
 	net_if_up(vlan_iface);
 
 	return 0;
@@ -1457,6 +1467,9 @@ static int erps_node_init(struct erps_node *node)
 
 	ret = k_mutex_init(&node->fsm_mutex);
 	for (unsigned int i = 0u; !ret && i < ARRAY_SIZE(node->ports); ++i) {
+		LOG_DBG("Interface %d is ring %u link %u, RPL: %s",
+			net_if_get_by_iface(net_if_lookup_by_dev(node->ports[i].dev)),
+			(unsigned int)node->ring_id, i, node->ports[i].rpl ? "yes" : "no");
 		ret = erps_link_pass_ctrl_frames(&node->ports[i]);
 		if (!ret)
 			ret = erps_link_configure_vlan(&node->ports[i]);
