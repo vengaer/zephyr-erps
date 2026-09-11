@@ -630,6 +630,14 @@ static int erps_fsm_post_locked(struct erps_link *lnk, enum erps_request req,
 		lnk->failed = true;
 	}
 
+	/* A carrier state change from off to on on the RPL may occur even when the
+	 * RPL is blocked. Such an even must not unblock the link
+	 */
+	if (req == ERPS_REQ_CLEAR_SF && lnk->rpl && node->state != ERPS_STATE_PROTECTION) {
+		NET_DBG("Ignoring '%s' on RPL", erps_request_name(req));
+		return 0;
+	}
+
 	NET_DBG("State is [%s]", erps_state_name(node->state));
 	switch (node->state) {
 	case ERPS_STATE_IDLE:		/* Table 10-2, rows 2-15 */
