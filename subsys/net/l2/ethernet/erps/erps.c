@@ -1372,54 +1372,6 @@ static int erps_fsm_init(struct erps_node *node)
 	return ret;
 }
 
-static int erps_link_pass_ctrl_frames(struct erps_link *lnk)
-{
-	int ret;
-	struct ethernet_context const *eth_ctx;
-	struct net_if *iface = net_if_lookup_by_dev(lnk->dev);
-
-	while (iface) {
-		NET_DBG("Control frame configuration for interface %d",
-			net_if_get_by_iface(iface));
-
-		if (net_if_l2(iface) != &NET_L2_GET_NAME(ETHERNET)) {
-			return -EINVAL;
-		}
-
-		eth_ctx = net_if_l2_data(iface);
-		if (!eth_ctx) {
-			return -ENODEV;
-		}
-
-		ret = net_eth_pass_ctrl_frames(iface, true);
-		switch (ret) {
-		case 0:
-			NET_DBG("Control frames pass interface %d", net_if_get_by_iface(iface));
-			break;
-		case -ENOTSUP:
-			NET_DBG("Interface %d does not support control frame management",
-				net_if_get_by_iface(iface));
-			ret = 0;
-			break;
-		default:
-			NET_ERR("Control frame management failure: %d", -ret);
-			return ret;
-		}
-
-		switch (eth_ctx->dsa_port) {
-		case DSA_CONDUIT_PORT:
-		case NON_DSA_PORT:
-			return 0;
-		default:
-			break;
-		}
-
-		iface = dsa_get_conduit_iface(iface);
-	}
-
-	return -ENODEV;
-}
-
 static int erps_link_configure_vlan(struct erps_link *lnk)
 {
 	int ret;
@@ -1482,9 +1434,7 @@ static int erps_node_init(struct erps_node *node)
 		LOG_DBG("Interface %d is ring %u link %u, RPL: %s",
 			net_if_get_by_iface(net_if_lookup_by_dev(node->ports[i].dev)),
 			(unsigned int)node->ring_id, i, node->ports[i].rpl ? "yes" : "no");
-		ret = erps_link_pass_ctrl_frames(&node->ports[i]);
-		if (!ret)
-			ret = erps_link_configure_vlan(&node->ports[i]);
+		ret = erps_link_configure_vlan(&node->ports[i]);
 	}
 	if (!ret) {
 		ret = erps_fsm_init(node);
