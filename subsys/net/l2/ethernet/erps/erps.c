@@ -1072,6 +1072,10 @@ static int erps_raps_create(struct erps_link *lnk, struct net_pkt *pkt)
 	pdu->raps_info.rs_sc = node->pdu_mut.rs_sc;
 	pdu->raps_info.status = node->pdu_mut.status;
 
+	if (node->state == ERPS_STATE_PROTECTION && node->ports[1u].blocked) {
+		pdu->raps_info.status |= RAPS_BPR;
+	}
+
 	ret = erps_link_get_node_id(lnk, &pdu->raps_info.node_id);
 	if (ret) {
 		return ret;
