@@ -1288,13 +1288,27 @@ int net_erps_ring_info_by_iface(struct net_if *iface, struct erps_ring_info *inf
 			info->reverting = k_work_delayable_is_pending(&node->wtr_dwork);
 			info->ctrl_vid = node->ctrl_vid;
 			info->traffic_vid = node->traffic_vid;
+			info->requester_index = (uint8_t)i;
+
+			info->blocked[0u] = node->ports[0u].blocked;
+			info->blocked[1u] = node->ports[1u].blocked;
+
+			info->iface_port[0u] = net_if_lookup_by_dev(node->ports[0u].dev);
+			if (!info->iface_port[0u]) {
+				return -ENODEV;
+			}
+
+			info->iface_port[1u] = net_if_lookup_by_dev(node->ports[1u].dev);
+			if (!info->iface_port[1u]) {
+				return -ENODEV;
+			}
 
 			rpl = erps_node_get_rpl(node);
 			if (rpl) {
-				info->iface_rpl = net_if_lookup_by_dev(rpl->dev);
+				info->rpl_index = 1;
 			}
 			else {
-				info->iface_rpl = NULL;
+				info->rpl_index = -1;
 			}
 
 			return 0;

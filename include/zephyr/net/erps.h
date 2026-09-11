@@ -31,14 +31,26 @@ struct erps_ring_info {
 	/** Whether or not reversion is in progress */
 	bool reverting;
 
+	/** Whether or not each port is blocked */
+	bool blocked[2u];
+
+	/** Index of the requesting interface */
+	uint8_t requester_index;
+
+	/**
+	  * Index of the RPL interface in the @c iface_port, -1 if the node is
+	  * neither the RPL owner nor the RPL neighbor
+	  */
+	int8_t rpl_index;
+
 	/** Control VLAN identifier */
 	uint16_t ctrl_vid;
 
 	/** Traffic VLAN identifier */
 	uint16_t traffic_vid;
 
-	/** RPL interface. Set to @c NULL if node is neither RPL owner or RPL neighbor */
-	struct net_if *iface_rpl;
+	/** Port interfaces */
+	struct net_if *iface_port[2u];
 };
 
 /** External events. Not to be confused with the R-APS events */
