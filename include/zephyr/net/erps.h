@@ -114,8 +114,7 @@ static inline net_if *net_erps_lookup_iface(uint8_t ring_id, uint8_t port)
  * @param info  Ring information struct to fill in
  *
  * @retval 0       @p info populated
- * @retval -EINVAL @p iface is not a ring link
- * @retval -ENODEV Could not get device associated with @p iface
+ * @retval -ENODEV @p iface could not be identified as a ring link
  */
 int net_erps_ring_info_by_iface(struct net_if *iface, struct erps_ring_info *info);
 
@@ -191,6 +190,37 @@ static inline struct net_if *net_erps_ring_get_other_link(struct net_if *iface)
 
 	return info.iface_port[info.iface_port[0u] == iface];
 }
+
+/**
+ * @brief Mark the link corresponding to @p iface  as RPL
+ *
+ * @note Must be called before ERPS initialization.
+ *
+ * @param iface    Network interface
+ * @param is_owner Set if the node corresponding to @p iface is to be the RPL owner
+ *
+ * @retval 0       Link marked as RPL
+ * @retval -ENODEV @p iface could not be identified as a ring link
+ * @retval -EPERM  Configuration not allowed at this state
+ * @retval -EBUSY  The other link connected to the corresponding node is marked as RPL
+ */
+int net_erps_set_as_rpl(struct net_if *iface, bool is_owner);
+
+/**
+ * @brief Mark the link as non-RPL
+ *
+ * @note Must be called before ERPS initialization.
+ *
+ * @details If the link was set as RPL, the RPL neighbor or RPL owner
+ * state is cleared from the corresponding node
+ *
+ * @param iface Network interface
+ *
+ * @retval 0       Link marked as RPL
+ * @retval -EPERM  Configuration not allowed at this state
+ * @retval -ENODEV @p iface could not be identified as a ring link
+ */
+int net_erps_unset_rpl(struct net_if *iface);
 
 
 /** @} */

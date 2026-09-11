@@ -29,6 +29,9 @@ enum erps_node_state {
 
 	/* State E */
 	ERPS_STATE_PENDING,
+
+	/* Non-standard placeholder used to track ring initialization */
+	ERPS_STATE_UNINIT,
 };
 
 /**

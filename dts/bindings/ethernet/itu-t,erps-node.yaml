@@ -15,6 +15,9 @@ properties:
       marks the device as either the RPL owner or the RPL neighbor. Which of the
       two is determined by the presence the itu-t,rpl-owner property.
 
+      This property denotes the static configuration which may be overridden
+      using net_erps_set_as_rpl() and net_erps_unset_rpl().
+
       Each Ethernet ring should have a single ring protection link.
 
   itu-t,ring-links:
@@ -34,6 +37,9 @@ properties:
       described in the ERPS specification. If said property is not set but the
       itu-t,ring-protection-lin property is set, the node takes on the role of what in
       the specification is referred to as the ETH_C_MI_RAPS_RPL_Neighbour_Node.
+
+      The RPL owner status may be reconfigured using net_erps_set_as_rpl() and implicitly
+      unset by marking disabling RPL on the corresponding interface using net_erps_unset_rpl().
 
   itu-t,non-revertive:
     type: boolean

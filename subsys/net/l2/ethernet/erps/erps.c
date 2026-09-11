@@ -82,7 +82,7 @@ struct erps_link {
 	uint8_t bpr;
 
 	/* Whether or not this link is the RPL */
-	const bool rpl;
+	bool rpl;
 
 	/* Link index */
 	const uint8_t idx;
@@ -106,10 +106,10 @@ struct erps_node {
 	uint8_t local_topreq;
 
 	/* Whether or not this node is the RPL owner */
-	const bool rpl_owner;
+	bool rpl_owner;
 
 	/* Whether or not this node is the RPL neighbor */
-	const bool rpl_nbr;
+	bool rpl_nbr;
 
 	/* R-APS version */
 	const uint8_t raps_ver;
@@ -176,6 +176,8 @@ static inline char const *erps_state_name(enum erps_node_state state)
 		return "FORCED_SWITCH";
 	case ERPS_STATE_PENDING:
 		return "PENDING";
+	case ERPS_STATE_UNINIT:
+		return "UNINITIALIZED";
 	default:
 		break;
 	}
@@ -1336,6 +1338,67 @@ int net_erps_ring_info_by_iface(struct net_if *iface, struct erps_ring_info *inf
 	return -EINVAL;
 }
 
+void net_erps_ring_mcast_addr(unsigned int ring_id, struct net_eth_addr *mac)
+{
+	memcpy(mac, &ERPS_MCAST_MAC, sizeof(*mac) - 1u);
+	mac->addr[sizeof(mac->addr) - 1u] = (uint8_t)ring_id;
+}
+
+int net_erps_set_as_rpl(struct net_if *iface, bool is_owner)
+{
+	struct erps_node *node;
+	struct erps_link *oth_lnk;
+	struct erps_link *lnk = erps_link_lookup_by_iface(iface);
+
+	if (!lnk) {
+		return -ENODEV;
+	}
+
+	node = erps_link_get_node(lnk);
+
+	if (node->state != ERPS_STATE_UNINIT) {
+		LOG_ERR("RPL configuration must be done before ERPS initialization");
+		return -EPERM;
+	}
+
+	oth_lnk = erps_node_other_link(node, lnk);
+
+	if (oth_lnk->rpl) {
+		return -EBUSY;
+	}
+
+	node->rpl_owner = is_owner;
+	node->rpl_nbr = !is_owner;
+	lnk->rpl = true;
+
+	return 0;
+}
+
+int net_erps_unset_rpl(struct net_if *iface)
+{
+	struct erps_node *node;
+	struct erps_link *lnk = erps_link_lookup_by_iface(iface);
+
+	if (!iface) {
+		return -ENODEV;
+	}
+
+	node = erps_link_get_node(lnk);
+
+	if (node->state != ERPS_STATE_UNINIT) {
+		LOG_ERR("RPL configuration must be done before ERPS initialization");
+		return -EPERM;
+	}
+
+	if (lnk->rpl) {
+		node->rpl_owner = false;
+		node->rpl_nbr = false;
+		lnk->rpl = false;
+	}
+
+	return 0;
+}
+
 static void erps_link_down_work(struct k_work *work)
 {
 	int ret;
@@ -1356,12 +1419,6 @@ static void erps_link_down_work(struct k_work *work)
 	if (ret) {
 		LOG_ERR("Error posting '%s': %d", erps_request_name(ERPS_REQ_SF), -ret);
 	}
-}
-
-void net_erps_ring_mcast_addr(unsigned int ring_id, struct net_eth_addr *mac)
-{
-	memcpy(mac, &ERPS_MCAST_MAC, sizeof(*mac) - 1u);
-	mac->addr[sizeof(mac->addr) - 1u] = (uint8_t)ring_id;
 }
 
 static int erps_fsm_init(struct erps_node *node)
@@ -1595,6 +1652,7 @@ static int erps_node_init(struct erps_node *node)
 		.ring_id = DT_INST_PROP(n, itu_t_ring_id),                                     \
 		.raps_mel = DT_INST_PROP(n, itu_t_raps_mel),                                   \
 		.wtr_duration = DT_INST_PROP(n, itu_t_wtr_timer_duration),                     \
+		.state = ERPS_STATE_UNINIT,                                                    \
 		.guard_timer_duration = DT_INST_PROP(                                          \
 			n, itu_t_guard_timer_duration                                          \
 		),                                                                             \

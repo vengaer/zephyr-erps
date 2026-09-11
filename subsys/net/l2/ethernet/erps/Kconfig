@@ -19,7 +19,7 @@ if NET_ERPS
 
 config NET_ERPS_INIT_PRIORITY
 	int "ERPS initialization priority"
-	default 91
+	default 92
 	help
 	  ERPS link initialization priority.
 
