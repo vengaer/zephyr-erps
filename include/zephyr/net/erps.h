@@ -13,6 +13,7 @@
 #define ZEPHYR_INCLUDE_NET_ERPS_H_
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 
 /**
@@ -125,6 +126,71 @@ int net_erps_ring_info_by_iface(struct net_if *iface, struct erps_ring_info *inf
  * @param mac     The address to store the multicast address in
  */
 void net_erps_ring_mcast_addr(unsigned int ring_id, struct net_eth_addr *mac);
+
+/**
+ * @brief Get the control VLAN identifier of the ring containing @p iface
+ *
+ * @param iface Network interface
+ * @param vid   VID to fill in
+ *
+ * @return See net_erps_ring_info_by_iface().
+ */
+static inline int net_erps_ring_get_ctrl_vid_by_iface(struct net_if *iface, uint16_t *vid)
+{
+	int ret;
+	struct erps_ring_info info;
+
+	ret = net_erps_ring_info_by_iface(iface, &info);
+	if (ret) {
+		return ret;
+	}
+
+	*vid = info.ctrl_vid;
+	return 0;
+}
+
+/**
+ * @brief Get the traffic VLAN identifier of the ring containing @p iface
+ *
+ * @param iface Network interface
+ * @param vid   VID to fill in
+ *
+ * @return See net_erps_ring_info_by_iface().
+ */
+static inline int net_erps_ring_get_traffic_vid_by_iface(struct net_if *iface, uint16_t *vid)
+{
+	int ret;
+	struct erps_ring_info info;
+
+	ret = net_erps_ring_info_by_iface(iface, &info);
+	if (ret) {
+		return ret;
+	}
+
+	*vid = info.traffic_vid;
+	return 0;
+}
+
+/**
+ * @brief Get the other network interface in the ring containing @p iface.
+ *
+ * @param iface Network interface
+ *
+ * @retval >0   Address of the other ring interface
+ * @retval NULL @p iface is either not in a ring, or the lookup failed for some other reason
+ */
+static inline struct net_if *net_erps_ring_get_other_link(struct net_if *iface)
+{
+	int ret;
+	struct erps_ring_info info;
+
+	ret = net_erps_ring_info_by_iface(iface, &info);
+	if (ret) {
+		return NULL;
+	}
+
+	return info.iface_port[info.iface_port[0u] == iface];
+}
 
 
 /** @} */
