@@ -139,6 +139,8 @@ bool erps_node_any_link_blocked(const struct erps_node *node);
 /*
  * Schedule R-APS transmission
  *
+ * @details Called with the FSM mutex held
+ *
  * param node:      ERPS node for which TX is to be scheduled
  * param req_state: Request/state to transmit
  * param subcode:   Event subcode

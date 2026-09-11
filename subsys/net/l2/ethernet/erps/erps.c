@@ -81,6 +81,9 @@ struct erps_link {
 	/* Blocked port reference, second half of (node ID, BPR) pair, see Section 10.1.10 */
 	uint8_t bpr;
 
+	/* Number of packets remaining in TX burst */
+	uint8_t tx_burst;
+
 	/* Whether or not this link is the RPL */
 	bool rpl;
 
@@ -92,6 +95,9 @@ struct erps_link {
 
 	/* Startup link detect timer */
 	struct k_work_delayable link_down_dwork;
+
+	/* TX work */
+	struct k_work_delayable tx_dwork;
 
 	/* Device for the port/MAC node */
 	const struct device *dev;
@@ -126,9 +132,6 @@ struct erps_node {
 	/* Current ring state */
 	uint8_t state;
 
-	/* Number of packets remaining in TX burst */
-	uint8_t tx_burst;
-
 	/* Duration of the guard timer, in ms */
 	const uint16_t guard_timer_duration;
 
@@ -152,9 +155,6 @@ struct erps_node {
 
 	/* Ports connected to the node */
 	struct erps_link ports[2u];
-
-	/* TX work */
-	struct k_work_delayable tx_dwork;
 
 	/* Wait-to-restore work */
 	struct k_work_delayable wtr_dwork;
@@ -453,7 +453,8 @@ int erps_node_sched_tx(struct erps_node *node, uint8_t req_state,
 		uint8_t subcode, uint8_t status)
 {
 	int ret;
-	uint8_t rs_sc;
+	uint8_t rs_sc, burst;
+	struct erps_link *lnk;
 
 	switch (req_state) {
 	case RAPS_NR:
@@ -471,25 +472,29 @@ int erps_node_sched_tx(struct erps_node *node, uint8_t req_state,
 	}
 
 	/* Cancel and wait for completion to avoid racing accesses */
-	k_work_cancel_delayable_sync(&node->tx_dwork, &(struct k_work_sync) { 0 });
+	k_work_cancel_delayable_sync(&node->ports[0u].tx_dwork, &(struct k_work_sync) { 0 });
+	k_work_cancel_delayable_sync(&node->ports[1u].tx_dwork, &(struct k_work_sync) { 0 });
 
-	node->tx_burst = 0u;
+	burst = 0u;
 
 	rs_sc = (req_state << RAPS_RS_SHIFT) | subcode;
 	if (node->pdu_mut.rs_sc != rs_sc) {
 		node->pdu_mut.rs_sc = rs_sc;
-		node->tx_burst = ERPS_RAPS_BURST;
+		burst = ERPS_RAPS_BURST;
 	}
 	if (node->pdu_mut.status != status) {
 		node->pdu_mut.status = status;
-		node->tx_burst = ERPS_RAPS_BURST;
+		burst = ERPS_RAPS_BURST;
 	}
+
+	node->ports[0u].tx_burst = burst;
+	node->ports[1u].tx_burst = burst;
 
 	NET_DBG("Scheduling R-APS(%s%s%s) TX%s, status 0x%02x",
 		raps_req_state_str(req_state),
 		status & RAPS_RB ? ",RB" : "",
 		status & RAPS_DNF ? ",DNF" : "",
-		node->tx_burst == ERPS_RAPS_BURST ? " (burst)" : "",
+		burst == ERPS_RAPS_BURST ? " (burst)" : "",
 		(unsigned int)status);
 
 	if (IS_ENABLED(CONFIG_MULTITHREADING)) {
@@ -497,10 +502,15 @@ int erps_node_sched_tx(struct erps_node *node, uint8_t req_state,
 		atomic_thread_fence(memory_order_release);
 	}
 
-	ret = k_work_reschedule(
-		&node->tx_dwork,
-		K_USEC(node->tx_burst ?  ERPS_TX_BURST_PERIOD : ERPS_TX_PERIOD)
-	);
+	ret = 0;
+	for (unsigned int i = 0u; ret >= 0 && i < ARRAY_SIZE(node->ports); ++i) {
+		lnk = &node->ports[i];
+
+		ret = k_work_reschedule(
+			&lnk->tx_dwork,
+			K_USEC(lnk->tx_burst ?  ERPS_TX_BURST_PERIOD : ERPS_TX_PERIOD)
+		);
+	}
 
 	return ret < 0 ? ret : 0;
 }
@@ -773,7 +783,8 @@ int erps_node_start_wtb(struct erps_node *node)
 void erps_node_stop_tx(struct erps_node *node)
 {
 	NET_DBG("Stopping TX");
-	k_work_cancel_delayable(&node->tx_dwork);
+	k_work_cancel_delayable(&node->ports[0u].tx_dwork);
+	k_work_cancel_delayable(&node->ports[1u].tx_dwork);
 }
 
 void erps_node_stop_wtr(struct erps_node *node)
@@ -1157,46 +1168,42 @@ static int erps_link_send_pdu(struct erps_link *lnk, struct net_if *iface)
 	return ret;
 }
 
-static void erps_node_tx_single_pdu(struct erps_node *node)
+static void erps_link_tx_single_pdu(struct erps_link *lnk)
 {
 	int ret;
-	struct erps_link *lnk;
 	struct net_if *iface, *vlan_iface;
+	struct erps_node *node = erps_link_get_node(lnk);
 
-	for (unsigned int i = 0u; i < ARRAY_SIZE(node->ports); ++i) {
-		lnk = &node->ports[i];
+	iface = net_if_lookup_by_dev(lnk->dev);
+	if (unlikely(!iface)) {
+		NET_ERR("Error looking up interface");
+		return;
+	}
 
-		iface = net_if_lookup_by_dev(lnk->dev);
-		if (unlikely(!iface)) {
-			NET_ERR("Error looking up interface");
-			continue;
-		}
+	if (!net_if_is_up(iface)) {
+		NET_DBG("Interface %d is down (%sRPL)", net_if_get_by_iface(iface),
+								lnk->rpl ? "" : "not ");
+		return;
+	}
 
-		if (!net_if_is_up(iface)) {
-			NET_DBG("Interface %d is down (%sRPL)", net_if_get_by_iface(iface),
-									lnk->rpl ? "" : "not ");
-			continue;
-		}
+	vlan_iface = net_eth_get_vlan_iface(iface, node->ctrl_vid);
+	if (!vlan_iface) {
+		NET_ERR("Found no VLAN interface for %d",
+			net_if_get_by_iface(iface));
+	}
 
-		vlan_iface = net_eth_get_vlan_iface(iface, node->ctrl_vid);
-		if (!vlan_iface) {
-			NET_ERR("Found no VLAN interface for %d",
-				net_if_get_by_iface(iface));
-		}
-
-		ret = erps_link_send_pdu(lnk, vlan_iface);
-		if (ret) {
-			NET_ERR("Error sending R-APS PDU: %d (iface %d)", -ret,
-					net_if_get_by_iface(vlan_iface));
-		}
-		else {
-			NET_DBG("R-APS(%s%s%s) - status 0x%02x - on interface %d",
-				raps_req_state_str(node->pdu_mut.rs_sc >> RAPS_RS_SHIFT),
-				node->pdu_mut.status & RAPS_RB ? ",RB" : "",
-				node->pdu_mut.status & RAPS_DNF ? ",DNF" : "",
-				(unsigned int)node->pdu_mut.status,
+	ret = erps_link_send_pdu(lnk, vlan_iface);
+	if (ret) {
+		NET_ERR("Error sending R-APS PDU: %d (iface %d)", -ret,
 				net_if_get_by_iface(vlan_iface));
-		}
+	}
+	else {
+		NET_DBG("R-APS(%s%s%s) - status 0x%02x - on interface %d",
+			raps_req_state_str(node->pdu_mut.rs_sc >> RAPS_RS_SHIFT),
+			node->pdu_mut.status & RAPS_RB ? ",RB" : "",
+			node->pdu_mut.status & RAPS_DNF ? ",DNF" : "",
+			(unsigned int)node->pdu_mut.status,
+			net_if_get_by_iface(vlan_iface));
 	}
 }
 
@@ -1204,22 +1211,22 @@ static void erps_tx_work(struct k_work *work)
 {
 	int ret;
 	k_timeout_t delay;
-	struct erps_node *node;
+	struct erps_link *lnk;
 	struct k_work_delayable *dwork = k_work_delayable_from_work(work);
 
-	node = CONTAINER_OF(dwork, struct erps_node, tx_dwork);
+	lnk = CONTAINER_OF(dwork, struct erps_link, tx_dwork);
 
 	/* Syncronize with TX scheduler */
 	if (IS_ENABLED(CONFIG_MULTITHREADING)) {
 		atomic_thread_fence(memory_order_acquire);
 	}
 
-	erps_node_tx_single_pdu(node);
+	erps_link_tx_single_pdu(lnk);
 
 	delay = K_USEC(ERPS_TX_PERIOD);
-	if (node->tx_burst) {
+	if (lnk->tx_burst) {
 		delay = K_USEC(ERPS_TX_BURST_PERIOD);
-		--node->tx_burst;
+		--lnk->tx_burst;
 	}
 
 	ret = k_work_reschedule(dwork, delay);
@@ -1524,7 +1531,6 @@ static int erps_node_init(struct erps_node *node)
 {
 	int ret;
 
-	k_work_init_delayable(&node->tx_dwork, erps_tx_work);
 	k_work_init_delayable(&node->wtr_dwork, erps_wtr_work);
 	k_work_init_delayable(&node->wtb_dwork, erps_wtb_work);
 
@@ -1535,6 +1541,8 @@ static int erps_node_init(struct erps_node *node)
 		LOG_DBG("Interface %d is ring %u link %u, RPL: %s",
 			net_if_get_by_iface(net_if_lookup_by_dev(node->ports[i].dev)),
 			(unsigned int)node->ring_id, i, node->ports[i].rpl ? "yes" : "no");
+
+		k_work_init_delayable(&node->ports[i].tx_dwork, erps_tx_work);
 
 		ret = erps_link_configure_vlan(&node->ports[i]);
 		if (ret) {
