@@ -9,6 +9,7 @@ config NET_ERPS
 	default y
 	depends on DT_HAS_ITU_T_ERPS_NODE_ENABLED && NETWORKING
 	select NET_VLAN
+	select NET_MGMT_EVENT
 	select NET_L2_ETHERNET_MGMT
 	help
 	  Ethernet ring protection switching provides recovery switching
