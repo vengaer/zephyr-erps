@@ -39,6 +39,8 @@
 #define ERPS_MCAST_MAC								\
 	(struct net_eth_addr) { .addr = { 0x01, 0x19, 0xa7, 0x00, 0x00, 0x01 }, }
 
+#define ERPS_INVALID_RING 0xff
+
 LOG_MODULE_REGISTER(erps, CONFIG_NET_ERPS_LOG_LEVEL);
 
 enum {
@@ -1745,12 +1747,14 @@ static int erps_node_block_all(struct erps_node *node)
 	);                                                                                     \
 										               \
 	BUILD_ASSERT(                                                                          \
-		DT_INST_PROP(n, itu_t_ring_id) >= ERPS_RING_ID_MIN,                            \
+		!DT_INST_NODE_HAS_PROP(n, itu_t_ring_id) ||                                    \
+			DT_INST_PROP_OR(n, itu_t_ring_id, 1) >= ERPS_RING_ID_MIN,              \
 		"itu-t,ring-id is too small"                                                   \
 	);                                                                                     \
 										               \
 	BUILD_ASSERT(                                                                          \
-		DT_INST_PROP(n, itu_t_ring_id) <= ERPS_RING_ID_MAX,                            \
+		!DT_INST_NODE_HAS_PROP(n, itu_t_ring_id) ||                                    \
+			DT_INST_PROP_OR(n, itu_t_ring_id, 1) <= ERPS_RING_ID_MAX,              \
 		"itu-t,ring-id is too large"                                                   \
 	);                                                                                     \
 										               \
@@ -1775,7 +1779,7 @@ static int erps_node_block_all(struct erps_node *node)
 		.rpl_nbr = !DT_INST_PROP(n, itu_t_rpl_owner) &&                                \
 			DT_INST_NODE_HAS_PROP(n, itu_t_ring_protection_link),                  \
 		.raps_ver = DT_INST_PROP(n, itu_t_raps_version),                               \
-		.ring_id = DT_INST_PROP(n, itu_t_ring_id),                                     \
+		.ring_id = DT_INST_PROP_OR(n, itu_t_ring_id, ERPS_INVALID_RING),               \
 		.raps_mel = DT_INST_PROP(n, itu_t_raps_mel),                                   \
 		.wtr_duration = DT_INST_PROP(n, itu_t_wtr_timer_duration),                     \
 		.state = ERPS_STATE_UNINIT,                                                    \
@@ -1802,6 +1806,13 @@ static int erps_init(void)
 	 * blocked before the latter is started.
 	 */
 	STRUCT_SECTION_FOREACH(erps_node, node) {
+		if (node->ring_id == ERPS_INVALID_RING) {
+			LOG_ERR("Ring identifier must be set via either itu-t,ring-id in dts "
+				"or net_erps_set_ring_id() before ERPS initialization");
+
+			return -EINVAL;
+		}
+
 		ret = erps_node_block_all(node);
 
 		if (ret) {

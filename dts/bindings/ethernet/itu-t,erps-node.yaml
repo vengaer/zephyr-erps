@@ -62,7 +62,6 @@ properties:
 
   itu-t,ring-id:
     type: int
-    required: true
     description: |
       Numeric idenfier of the Ethernet ring to which this node belongs.
     min: 1
