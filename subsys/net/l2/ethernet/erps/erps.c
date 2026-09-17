@@ -43,14 +43,6 @@
 
 LOG_MODULE_REGISTER(erps, CONFIG_NET_ERPS_LOG_LEVEL);
 
-enum {
-	/* Minimum ring id */
-	ERPS_RING_ID_MIN	= 1,
-
-	/* Maximum ring id */
-	ERPS_RING_ID_MAX	= 239,
-};
-
 /* Burst consists of 3 PDUs sent in quick succession. Counter is 0-based, hence
  * the value being 2
  */

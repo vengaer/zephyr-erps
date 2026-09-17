@@ -25,6 +25,12 @@
 struct net_if;
 struct net_eth_addr;
 
+
+/** Minimum ring ID */
+#define ERPS_RING_ID_MIN	1
+/** Maximum ring ID */
+#define ERPS_RING_ID_MAX	239
+
 /** Ring information */
 struct erps_ring_info {
 	/** Ring identifier */
