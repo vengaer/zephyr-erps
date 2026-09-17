@@ -1673,6 +1673,26 @@ static int erps_node_init(struct erps_node *node)
 	return ret;
 }
 
+static int erps_node_block_all(struct erps_node *node)
+{
+	int ret;
+	struct net_if *iface;
+
+	for (unsigned int i = 0u; i < ARRAY_SIZE(node->ports); ++i) {
+		iface = net_if_lookup_by_dev(node->ports[i].dev);
+		if (!iface) {
+			return -ENODEV;
+		}
+
+		ret = net_eth_port_set_enabled(iface, false);
+		if (ret) {
+			return ret;
+		}
+	}
+
+	return 0;
+}
+
 
 #define ERPS_LINK_DEVICE_GET(link_idx, n)				                       \
 	DEVICE_DT_GET(                                                                         \
@@ -1777,6 +1797,18 @@ static int erps_init(void)
 	int ret;
 
 	ret = 0;
+	/* If multiple rings are attached to a switch which is started lazily when a port is enabled
+	 * via  net_eth_port_set_enabled(), it must be ensured that all ports on said switch are
+	 * blocked before the latter is started.
+	 */
+	STRUCT_SECTION_FOREACH(erps_node, node) {
+		ret = erps_node_block_all(node);
+
+		if (ret) {
+			return ret;
+		}
+	}
+
 	STRUCT_SECTION_FOREACH(erps_node, node) {
 		ret = erps_node_init(node);
 
