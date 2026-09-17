@@ -222,6 +222,18 @@ int net_erps_set_as_rpl(struct net_if *iface, bool is_owner);
  */
 int net_erps_unset_rpl(struct net_if *iface);
 
+/**
+ * @brief Set ID of the ring associated with @p iface
+ *
+ * @param iface   Network interface
+ * @param ring_id The identifier to set
+ *
+ * @retval 0       Ring ID set
+ * @retval -ENODEV Ring node could not be identified
+ * @retval -EINVAL @p ring_id is invalid
+ */
+int net_erps_set_ring_id(struct net_if *iface, uint8_t ring_id);
+
 
 /** @} */
 

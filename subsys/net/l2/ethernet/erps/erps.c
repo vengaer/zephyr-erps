@@ -122,7 +122,7 @@ struct erps_node {
 	const uint8_t raps_ver;
 
 	/* Ring identifier */
-	const uint8_t ring_id;
+	uint8_t ring_id;
 
 	/* Maintenance entity group level */
 	const uint8_t raps_mel;
@@ -1444,6 +1444,25 @@ int net_erps_unset_rpl(struct net_if *iface)
 		node->rpl_nbr = false;
 		lnk->rpl = false;
 	}
+
+	return 0;
+}
+
+int net_erps_set_ring_id(struct net_if *iface, uint8_t ring_id)
+{
+	struct erps_node *node;
+	struct erps_link *lnk = erps_link_lookup_by_iface(iface);
+
+	if (!lnk) {
+		return -ENODEV;
+	}
+
+	if (ring_id < ERPS_RING_ID_MIN || ring_id > ERPS_RING_ID_MAX) {
+		return -EINVAL;
+	}
+
+	node = erps_link_get_node(lnk);
+	node->ring_id = ring_id;
 
 	return 0;
 }
