@@ -1376,7 +1376,7 @@ int net_erps_ring_info_by_iface(struct net_if *iface, struct erps_ring_info *inf
 		}
 	}
 
-	return -EINVAL;
+	return -ENODEV;
 }
 
 void net_erps_ring_mcast_addr(unsigned int ring_id, struct net_eth_addr *mac)
