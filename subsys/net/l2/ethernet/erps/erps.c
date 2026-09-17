@@ -1321,7 +1321,6 @@ static void erps_iface_up_cb(struct net_mgmt_event_callback *cb, uint64_t mgmt_e
 	}
 }
 
-#if defined(CONFIG_ERPS_SHELL)
 struct net_if *net_erps_lookup_iface(uint8_t ring_id, uint8_t port)
 {
 	if (port >= ARRAY_SIZE((((struct erps_node *)0)->ports))) {
@@ -1338,7 +1337,6 @@ struct net_if *net_erps_lookup_iface(uint8_t ring_id, uint8_t port)
 
 	return NULL;
 }
-#endif /* CONFIG_ERPS_SHELL */
 
 int net_erps_ring_info_by_iface(struct net_if *iface, struct erps_ring_info *info)
 {
