@@ -83,7 +83,7 @@ struct erps_link {
 	bool rpl;
 
 	/* Link index */
-	const uint8_t idx;
+	uint8_t idx;
 
 	/* Node if of received PDU, first half part of (node ID BPR) pair, Section 10.1.10 */
 	struct net_eth_addr last_node_id;
@@ -1394,7 +1394,7 @@ void net_erps_ring_mcast_addr(unsigned int ring_id, struct net_eth_addr *mac)
 int net_erps_set_as_rpl(struct net_if *iface, bool is_owner)
 {
 	struct erps_node *node;
-	struct erps_link *oth_lnk;
+	struct erps_link *oth_lnk, tmp;
 	struct erps_link *lnk = erps_link_lookup_by_iface(iface);
 
 	if (!lnk) {
@@ -1417,6 +1417,15 @@ int net_erps_set_as_rpl(struct net_if *iface, bool is_owner)
 	node->rpl_owner = is_owner;
 	node->rpl_nbr = !is_owner;
 	lnk->rpl = true;
+
+	if (lnk != &node->ports[1u]) {
+		memcpy(&tmp, lnk, sizeof(*lnk));
+		memcpy(&node->ports[0u], &node->ports[1u], sizeof(node->ports[0u]));
+		memcpy(&node->ports[1u], &tmp, sizeof(tmp));
+
+		node->ports[0u].idx = 0u;
+		node->ports[1u].idx = 1u;
+	}
 
 	return 0;
 }
