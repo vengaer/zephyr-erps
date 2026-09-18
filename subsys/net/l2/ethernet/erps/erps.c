@@ -681,6 +681,12 @@ static int erps_fsm_post_locked(struct erps_link *lnk, enum erps_request req,
 	case ERPS_STATE_PENDING:	/* Table 10-2, rows 58-73 */
 		ret = erps_fsm_post_pending(lnk, req, pdu);
 		break;
+	case ERPS_STATE_UNINIT:
+		if (req == ERPS_REQ_WTR_RUNNING) {
+			ret = 0;
+			break;
+		}
+		__fallthrough;
 	default:
 		NET_ERR("Invalid ERPS state 0x%02x",
 				(unsigned int)node->state);
